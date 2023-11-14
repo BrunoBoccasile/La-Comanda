@@ -5,94 +5,116 @@ function altaMesa($datos)
 {
     if(isset($datos["estado"]))
     {
-        if(Mesa::ValidarDatos($datos["estado"]))
+        if($datos["tipoEmpleado"] == "mozo" || $datos["tipoEmpleado"] == "socio")
         {
-            $controlador = new MesaController();
-            $retornoInsertar = $controlador->insertarMesa($datos["estado"]);
-            echo "Se insertó la mesa con éxito con el ID: " . $retornoInsertar; 
+            if(Mesa::ValidarDatos($datos["estado"]))
+            {
+                $controlador = new MesaController();
+                $retornoInsertar = $controlador->insertarMesa($datos["estado"]);
+                echo json_encode(array("OK" => "Se insertó la mesa con éxito con el ID: {$retornoInsertar}"));
+            }
+            else
+            {
+                echo json_encode(array("ERROR" => "Datos invalidos. El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'"));
+            }
+
         }
         else
         {
-            echo "Error: Datos invalidos.\n";
-            echo "El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'.\n";
+            echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de alta una mesa"));
         }
     }
     else
     {
-        echo "Error: faltan datos necesarios para el alta de la mesa.\n";
-        echo "Se requiere estado.\n";
+        echo json_encode(array("ERROR" => "Faltan datos necesarios para el alta de la mesa. Se requiere estado"));
     }
+    echo "\n";
 }
 
-function cierreMesa($datos)
+function cierreMesa($datos, $login)
 {
     if(isset($datos["id"]))
     {
-
-           $controlador = new MesaController();
-           $mesaRetornada = $controlador->buscarMesaPorId($datos["id"]);
-           if($mesaRetornada == false)
-           {
-               echo "Error: La mesa no existe o ya esta cerrada.\n"; 
-           }
-           else
-           {
+        if($login["tipoEmpleado"] == "socio")
+        {
+            $controlador = new MesaController();
+            $mesaRetornada = $controlador->buscarMesaPorId($datos["id"]);
+            if($mesaRetornada == false)
+            {
+                 echo json_encode(array("ERROR" => "La mesa no existe o ya esta cerrada"));
+            }
+            else
+            {
                 $controlador->modificarMesa($mesaRetornada->id, "cerrada");
-                echo "Mesa cerrada con exito.\n";
-           }
+                echo json_encode(array("OK" => "Mesa cerrada con exito"));
+            }
 
+        }
+        else
+        {
+            echo json_encode(array("ERROR" => "Debe ser socio para cerrar una mesa"));
+        }
     }
     else
     {
-        echo "Error: faltan datos necesarios para el cierre de la mesa.\n";
-        echo "Se requiere id";
+        echo json_encode(array("ERROR" => "Faltan datos necesarios para el cierre de la mesa. Se requiere id"));
     }
+    echo "\n";
 }
 
-function modificarMesa($datos)
+function modificarMesa($datos, $login)
 {
     if(isset($datos["id"]))
     {
-
-           $controlador = new MesaController();
-           $mesaRetornada = $controlador->buscarMesaPorId($datos["id"]);
-           if($mesaRetornada == false)
-           {
-               echo "Error: La mesa no existe.\n"; 
-           }
-           else
-           {
-                $estadoModificado = $mesaRetornada->estado;
-                $flagModificacion = false;
-                if(isset($datos["estado"]) && $datos["estado"] != $estadoModificado)
-                {
-                    if($datos["estado"] == "con cliente esperando pedido" || $datos["estado"] == "con cliente comiendo" || $datos["estado"] == "con cliente pagando" || $datos["estado"] == "disponible")
+        if($login["tipoEmpleado"] == "mozo" || $login["tipoEmpleado"] == "socio")
+        {
+            $controlador = new MesaController();
+            $mesaRetornada = $controlador->buscarMesaPorId($datos["id"]);
+            if($mesaRetornada == false)
+            {
+                echo json_encode(array("ERROR" => "La mesa no existe"));
+            }
+               else
+               {
+                    $estadoModificado = $mesaRetornada->estado;
+                    $flagModificacion = false;
+                    if(isset($datos["estado"]) && $datos["estado"] != $estadoModificado)
                     {
-                        $estadoModificado = $datos["estado"];
-                        $flagModificacion = true;
+                        if($datos["estado"] == "con cliente esperando pedido" || $datos["estado"] == "con cliente comiendo" || $datos["estado"] == "con cliente pagando" || $datos["estado"] == "disponible")
+                        {
+                            $estadoModificado = $datos["estado"];
+                            $flagModificacion = true;
+                        }
+                        else
+                        {
+                            echo json_encode(array("ERROR" => "El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'"));
+                            echo "\n";
+                        }
+                    }
+                    if($flagModificacion)
+                    {
+                        $controlador->modificarMesa($mesaRetornada->id, $estadoModificado);  
+                        echo json_encode(array("OK" => "Mesa modificada con exito"));
                     }
                     else
                     {
-                        echo "El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'.\n";
+                        echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
                     }
-                }
-                if($flagModificacion)
-                {
-                    $controlador->modificarMesa($mesaRetornada->id, $estadoModificado);      
-                    echo "Mesa modificada con exito.\n";
-                }
-                else
-                {
-                    echo "No se realizo ninguna modificacion.\n";
-                }
-           }
+               }
+
+        }
+        else
+        {
+            echo json_encode(array("ERROR" => "Debe ser mozo o socio para modificar una mesa"));
+        }
+        
 
     }
     else
     {
-        echo "Error: faltan datos necesarios para la modificacion de la mesa.\n";
-        echo "Se requiere id para identificar la mesa a modificar";
+        echo json_encode(array("ERROR" => "Faltan datos necesarios para la modificacion de la mesa. Se requiere id para identificar la mesa a modificar"));
     }
+    echo "\n";
 }
 
 function listadoMesa($datos)
@@ -107,7 +129,7 @@ function listadoMesa($datos)
                 $mesaRetornada = $controladorMesa->buscarMesaPorId($datos["id"]);
                 if($mesaRetornada == false)
                 {
-                    echo "Error: No existe una mesa con ese ID.\n";
+                    echo json_encode(array("ERROR" => "No existe una mesa con ese ID"));
                 }
                 else
                 {
@@ -116,7 +138,7 @@ function listadoMesa($datos)
             }
             else
             {
-                echo "Error: Para listar una mesa se necesita el ID.\n";
+                echo json_encode(array("ERROR" => "Para listar una mesa se necesita el ID"));
             }
         }
         else if($datos["parametro"] == "todas")
@@ -129,13 +151,13 @@ function listadoMesa($datos)
         }
         else
         {
-            echo "Error: El 'parametro' debe ser 'una' o 'todas'.\n";
+            echo json_encode(array("ERROR" => "El 'parametro' debe ser 'una' o 'todas'"));
         }
     }
     else
     {
-        echo "Error: faltan datos necesarios para el listado de las mesas.\n";
-        echo "Se requiere parametro para listar una o todas.\n";
+        echo json_encode(array("ERROR" => "Faltan datos necesarios para el listado de las mesas. Se requiere parametro para listar una o todas"));
     }
+    echo "\n";
 }
 ?>

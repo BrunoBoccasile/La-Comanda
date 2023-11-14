@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/../models/comanda.php';
 require_once __DIR__ . '/../controladores/mesaController.php';
+require_once __DIR__ . '/../controladores/productoController.php';
 
 class ComandaController {
 
@@ -20,18 +21,22 @@ class ComandaController {
         $mesaRetornada = $controladorMesa->buscarMesaPorId($idMesa);
         if($mesaRetornada != false)
         {
+    
+            $comandasDeLaMesa = $comanda->TraerTodasLasComandasPorMesa($idMesa);
+
             do
             {
                 $id = Comanda::generarIdAlfanumerico();
             }
             while(self::buscarComandaPorId($id) != false);
             
+            $controladorProducto = new ProductoController();
             $comanda->id = $id;
             $comanda->detalle = $detalle;
             $comanda->estado = "pendiente";
             $comanda->tiempoEstimadoFinalizacion = Comanda::calcularTiempoEstimadoFinalizacion($detalle);
             $comanda->idMesa = $idMesa;
-            $comanda->costoTotal = Comanda::calcularCostoTotal($detalle);
+            $comanda->costoTotal = ($controladorProducto->buscarProductoPorNombre($detalle))->precio;
             $comanda->fechaHoraCreacion = date('y-m-d H:i');
 
             $controladorMesa->modificarMesa($idMesa, "con cliente esperando pedido");
@@ -51,10 +56,11 @@ class ComandaController {
 
         if($controladorMesa->buscarMesaPorId($idMesa) != false)
         {
+            $controladorProducto = new ProductoController();
             $comandaOriginal->detalle = $detalle;
             $comandaOriginal->estado = $estado;
             $comandaOriginal->idMesa = $idMesa;
-            $comandaOriginal->costoTotal = Comanda::calcularCostoTotal($detalle);
+            $comandaOriginal->costoTotal = ($controladorProducto->buscarProductoPorNombre($detalle))->precio;
             $comandaOriginal->tiempoEstimadoFinalizacion = Comanda::calcularTiempoEstimadoFinalizacion($detalle);
         }
         else
@@ -64,27 +70,37 @@ class ComandaController {
         return $comandaOriginal->ModificarComandaParametros();
     }
 
-    public function borrarComanda($id) {
+    public function borrarComanda($id) 
+    {
         $comanda = new Comanda();
         $comanda->id = $id;
         return $comanda->BorrarComanda();
     }
 
     
-    public function listarComandas() {
+    public function listarComandas() 
+    {
         return Comanda::TraerTodasLasComandas();
     }
-    public function listarComandasPorMesa($idMesa) {
+
+    public function listarComandasPorMesa($idMesa) 
+    {
         return Comanda::TraerTodasLasComandasPorMesa($idMesa);
     }
     
-    
-    public function listarComandasJson() {
+    public function listarComandasPorTipo($tipo)
+    {
+        return Comanda::TraerTodasLasComandasPorTipo($tipo);
+    }
+
+    public function listarComandasJson() 
+    {
         return json_encode(Comanda::TraerTodasLasComandas(), JSON_PRETTY_PRINT);
     }
     
 
-    public function buscarComandaPorId($id) {
+    public function buscarComandaPorId($id) 
+    {
         $retorno = Comanda::TraerUnaComanda($id);
         return $retorno;
     }

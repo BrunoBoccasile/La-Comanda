@@ -59,6 +59,12 @@ class EmpleadoController {
         return $retorno;
     }
 
+    public function obtenerTipoDeEmpleadoLogeado($usuario, $clave)
+    {
+        $empleado = Empleado::TraerUnEmpleadoPorUsuarioClave($usuario, $clave);
+        return $empleado->tipo;
+    }
+
     public function buscarEmpleadoPorId($id) {
         $retorno = Empleado::TraerUnEmpleado($id);
         return $retorno;

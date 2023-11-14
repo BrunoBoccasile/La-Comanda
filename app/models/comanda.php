@@ -14,7 +14,7 @@ class Comanda
 
     public function mostrarDatos()
     {
-        return $this->id . "  " . $this->detalle . "  " . $this->estado . "  " . $this->tiempoEstimadoFinalizacion . " " . $this->idMesa . " " . $this->costoTotal . " " . $this->fechaHoraCreacion;
+        return json_encode(array("ID" => $this->id, "DETALLE" => $this->detalle, "ESTADO" => $this->estado, "TIEMPO ESTIMADO FINALIZACION" => $this->tiempoEstimadoFinalizacion, "ID MESA" => $this->idMesa, "COSTO TOTAL" => $this->costoTotal, "FECHA Y HORA CREACION" => $this->fechaHoraCreacion));
     }
 
     public static function generarIdAlfanumerico() 
@@ -34,41 +34,14 @@ class Comanda
     public static function calcularTiempoEstimadoFinalizacion($detalle)
     {
         $controladorProductos = new ProductoController();
-        $arrayProductos = explode(",", $detalle);
-        $arrayTragos = array();
-        $arrayCervezas = array();
-        $arrayComidas = array();
-        $arrayPostres = array();
-        foreach($arrayProductos as $producto)
-        {
-            $objetoProducto = $controladorProductos->buscarProductoPorNombre($producto);
-            switch($objetoProducto->tipo)
-            {
-                case "trago":
-                    array_push($arrayTragos, $producto);
-                    break;
-                case "cerveza":
-                    array_push($arrayCervezas, $producto);
-                    break;
-                case "comida":
-                    array_push($arrayComidas, $producto);
-                    break;
-                case "postre":
-                    array_push($arrayPostres, $producto);
-                    break;
-            }
-        }
+        $objetoProducto = $controladorProductos->buscarProductoPorNombre($detalle);
 
         //inicializo cantidades
         $cantidadBartender = 0;
         $cantidadCerveceros = 0;
-        $cantidadCocineros = 0;
         $cantidadMozos = 0; 
+        $cantidadCocineros = 0;
 
-        $tiempoTrago = 0;
-        $tiempoCerveza = 0;
-        $tiempoComidas = 0;
-        $tiempoPostres = 0;
         //obtengo cantidad de empleados de cada rubro
         $controladorEmpelados = new EmpleadoController();
         $arrayEmpleados = $controladorEmpelados->listarEmpleados();
@@ -90,88 +63,31 @@ class Comanda
                     break;
             }
         }
-        //trago 5 minutos cada uno
-        if(count($arrayTragos) > 0)
-        {
-            $tiempoTrago = (count($arrayTragos) * 5) / $cantidadBartender;
-        }
-        
-        //cerveza 2 minutos por cada ronda (ronda maxima 4 unidades),
-        
-        $cantidadCervezas = count($arrayCervezas);
-        if($cantidadCervezas > 0)
-        {
-            if ($cantidadCervezas <= 4) 
-            {
-                $tiempoCerveza = 2;
-            } 
-            else 
-            {
-                $tiempoCerveza = ceil($cantidadCervezas / 4) * 2;
-            }
-            
-            $tiempoCerveza = $tiempoCerveza / $cantidadCerveceros;
-        }
-        
-        //comida 30 minutos por cada 5 platos (valor arbitrario suponiendo cantidad X de cocinas y que todos los platos sean distintos)
-        $cantidadComidas = count($arrayComidas);
-        
-        if($cantidadComidas > 0)
-        {
-            if ($cantidadComidas <= 5) 
-            {
-                $tiempoComidas = 30;
-            } 
-            else 
-            {
-                $tiempoComidas = ceil($cantidadComidas / 5) * 30;
-            }
-            $tiempoComidas = $tiempoComidas / $cantidadCocineros;
-        }
-        
-        //postre 10 minutos por cada 5 postres (valor arbitrario suponiendo cantidad X de cocinas y que todos los postres sean distintos)
-        $cantidadPostres = count($arrayPostres);
 
-        if($cantidadPostres > 0)
+        switch($objetoProducto->tipo)
         {
-            if($cantidadPostres <= 5)
-            {
-                $tiempoPostres = 10;
-            }
-            else
-            {
-                $tiempoPostres = ceil($tiempoPostres / 5) * 10;
-            }
-    
-            $tiempoPostres = $tiempoPostres / $cantidadCocineros;
+            case "trago":
+                //trago 5 minutos cada uno
+                $tiempo = 5 / $cantidadBartender;
+                break;
+            case "cerveza":
+                //cerveza 2 minutos
+                $tiempo = 2 / $cantidadCerveceros;
+                break;
+            case "comida":
+                //comida 30 minutos, base de 10 minutos porque no hay tiempos que, a pesar de la cantidad de cocineros, no se pueden acelerar
+                $tiempo = (20 / $cantidadCocineros) + 10;
+                break;
+            case "postre":
+                //postre 10 minutos, base de 5 minutos porque no hay tiempos que, a pesar de la cantidad de cocineros, no se pueden acelerar
+                $tiempo = (5 / $cantidadCocineros) + 5;
+                    break;
         }
+        //por cada mozo, tardara 5 minutos por comanda.
 
-        $tiempoTotal = max($tiempoTrago, $tiempoCerveza, $tiempoComidas, $tiempoPostres);
-
-        //por cada mozo, tardara 2 minutos por comanda.
-        if($cantidadMozos > 0)
-        {
-            $tiempoTotal = $tiempoTotal + (2 / $cantidadMozos);
-        }
-        return $tiempoTotal; 
-    }
-
-    public static function calcularCostoTotal($detalle)
-    {
-        $controladorProductos = new ProductoController();
-        $arrayProductos = explode(",", $detalle);
-        $arrayTragos = array();
-        $arrayCervezas = array();
-        $arrayComidas = array();
-        $arrayPostres = array();
-        $costoTotal = 0;
-        foreach($arrayProductos as $producto)
-        {
-            $objetoProducto = $controladorProductos->buscarProductoPorNombre($producto);
-            $costoTotal += $objetoProducto->precio;
-        }
-
-        return $costoTotal;
+        $tiempo += (5 / $cantidadMozos);
+        
+        return $tiempo; 
     }
     
     public static function ValidarDatos($detalle)
@@ -179,49 +95,46 @@ class Comanda
         $controladorProductos = new ProductoController();
         $controladorEmpleados = new EmpleadoController();
         $retorno = 1;
-        $arrayProductos = explode(",", $detalle);
-        foreach($arrayProductos as $producto)
-        {
-            $objetoProducto = $controladorProductos->buscarProductoPorNombre($producto);
+            $objetoProducto = $controladorProductos->buscarProductoPorNombre($detalle);
             if($objetoProducto == false)
             {
                 $retorno = 0;
-                break;
             }
-            switch($objetoProducto->tipo)
+            else
             {
-                case "trago":
-                    if($controladorEmpleados->listarEmpleadosPorTipo("bartender") == false)
-                    {
-                        $retorno = -1;
+                switch($objetoProducto->tipo)
+                {
+                    case "trago":
+                        if($controladorEmpleados->listarEmpleadosPorTipo("bartender") == false)
+                        {
+                            $retorno = -1;
+                            break;
+                        }
                         break;
-                    }
-                    break;
-                case "cerveza":
-                    if($controladorEmpleados->listarEmpleadosPorTipo("cervecero") == false)
-                    {
-                        $retorno = -2;
+                    case "cerveza":
+                        if($controladorEmpleados->listarEmpleadosPorTipo("cervecero") == false)
+                        {
+                            $retorno = -2;
+                            break;
+                        }
                         break;
-                    }
-                    break;
-                case "comida":
-                    if($controladorEmpleados->listarEmpleadosPorTipo("cocinero") == false)
-                    {
-                        $retorno = -3;
+                    case "comida":
+                        if($controladorEmpleados->listarEmpleadosPorTipo("cocinero") == false)
+                        {
+                            $retorno = -3;
+                            break;
+                        }
                         break;
-                    }
-                    break;
-                case "postre":
-                    if($controladorEmpleados->listarEmpleadosPorTipo("cocinero") == false)
-                    {
-                        $retorno = -3;
-                        break;
-                    }
-                    break;
-                    
+                    case "postre":
+                        if($controladorEmpleados->listarEmpleadosPorTipo("cocinero") == false)
+                        {
+                            $retorno = -3;
+                            break;
+                        }
+                        break;     
+                }
+
             }
-            
-        }
         return $retorno;
     }
 
@@ -261,6 +174,16 @@ class Comanda
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
         $consulta = $objetoAccesoDato->RetornarConsulta("select id,detalle,estado,tiempo_estimado_finalizacion as tiempoEstimadoFinalizacion,id_mesa as idMesa,costo_total as costoTotal,fecha_hora_creacion as fechaHoraCreacion from comandas where estado != 'concluida' and id_mesa =:idmesa");
         $consulta->bindValue(':idmesa', $idMesa, PDO::PARAM_STR);
+        $consulta->execute();
+        return $consulta->fetchAll(PDO::FETCH_CLASS, "comanda");
+    }
+
+    public static function TraerTodasLasComandasPorTipo($tipo)
+    {
+        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
+        $consulta = $objetoAccesoDato->RetornarConsulta("select c.id,c.detalle,c.estado,c.tiempo_estimado_finalizacion as tiempoEstimadoFinalizacion,c.id_mesa as idMesa,c.costo_total as costoTotal,c.fecha_hora_creacion as fechaHoraCreacion from comandas c JOIN menu m ON c.detalle = m.nombre
+        WHERE c.estado != 'concluida'  AND m.tipo = :tipo");
+        $consulta->bindValue(':tipo', $tipo, PDO::PARAM_STR);
         $consulta->execute();
         return $consulta->fetchAll(PDO::FETCH_CLASS, "comanda");
     }

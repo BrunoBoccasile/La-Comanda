@@ -12,7 +12,7 @@ class Empleado
 
     public function mostrarDatos()
     {
-        return $this->id . "  " . $this->nombre . "  " . $this->apellido . "  " . $this->usuario . " " . $this->clave . " " . $this->estado . " " . $this->tipo;
+        return json_encode(array("ID" => $this->id, "NOMBRE" => $this->nombre, "APELLIDO" => $this->apellido, "USUARIO" => $this->usuario, "CLAVE" => $this->clave, "ESTADO" => $this->estado, "TIPO" => $this->tipo));
     }
 
     public static function ValidarDatos($nombre, $apellido, $usuario, $clave, $tipo)
