@@ -27,14 +27,6 @@ class Producto
         }
     }
 
-    public function InsertarElProducto()
-    {
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("INSERT into menu (nombre,tipo,precio,estado)values('$this->nombre','$this->tipo','$this->precio','$this->estado')");
-        $consulta->execute();
-        return $objetoAccesoDato->RetornarUltimoIdInsertado();
-    }
-
     public function InsertarElProductoParametros()
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
@@ -73,19 +65,6 @@ class Producto
         $productoBuscado = $consulta->fetchObject('producto');
         return $productoBuscado;
     }
-    public function ModificarProducto()
-    {
-
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("
-				update menu 
-				set nombre='$this->nombre',
-				tipo='$this->tipo',
-				precio='$this->precio',
-                estado='$this->estado'
-                WHERE id='$this->id'");
-        return $consulta->execute();
-    }
 
     public function ModificarProductoParametros()
     {
@@ -103,18 +82,6 @@ class Producto
         $consulta->bindValue(':precio', $this->precio, PDO::PARAM_STR);
         $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
         return $consulta->execute();
-    }
-
-    public function BorrarProducto()
-    {
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("
-				delete 
-				from menu				
-				WHERE id=:id");
-        $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
-        $consulta->execute();
-        return $consulta->rowCount();
     }
 }
 ?>

@@ -23,13 +23,6 @@ class ProductoController {
         return $producto->ModificarProductoParametros();
     }
 
-    public function borrarProducto($id) {
-        $producto = new Producto();
-        $producto->id = $id;
-        return $producto->BorrarProducto();
-    }
-
-    
     public function listarProductos() {
         return Producto::TraerTodosLosProductos();
     }

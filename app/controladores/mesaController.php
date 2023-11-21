@@ -17,13 +17,6 @@ class MesaController {
         return $mesa->ModificarMesaParametros();
     }
 
-    public function borrarMesa($id) {
-        $mesa = new Mesa();
-        $mesa->id = $id;
-        return $mesa->BorrarMesa();
-    }
-
-    
     public function listarMesas() {
         return Mesa::TraerTodasLasMesas();
     }

@@ -22,13 +22,6 @@ class Mesa
         }
     }
 
-    public function InsertarLaMesa()
-    {
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("INSERT into mesas (estado)values('$this->estado')");
-        $consulta->execute();
-        return $objetoAccesoDato->RetornarUltimoIdInsertado();
-    }
 
     public function InsertarLaMesaParametros()
     {
@@ -58,17 +51,6 @@ class Mesa
     }
 
 
-    public function ModificarMesa()
-    {
-
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("
-				update mesas 
-				set estado='$this->estado'
-                WHERE id='$this->id'");
-        return $consulta->execute();
-    }
-
     public function ModificarMesaParametros()
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
@@ -81,16 +63,5 @@ class Mesa
         return $consulta->execute();
     }
 
-    public function BorrarMesa()
-    {
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("
-				delete 
-				from mesas				
-				WHERE id=:id");
-        $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
-        $consulta->execute();
-        return $consulta->rowCount();
-    }
 }
 ?>

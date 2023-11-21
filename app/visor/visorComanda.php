@@ -2,411 +2,634 @@
 require_once __DIR__ . "/../controladores/comandaController.php";
 require_once __DIR__ . "/../controladores/mesaController.php";
 require_once __DIR__ . "/../controladores/productoController.php";
-function altaComanda($datos, $login, $archivo)
+function altaComanda($datos)
 {
-    if(isset($datos["detalle"]) && isset($datos["idMesa"]))
+    if(isset($datos["datos"]["tipoEmpleado"]))
     {
-        if($login["tipoEmpleado"] == "socio" || $login["tipoEmpleado"] == "mozo")
+        
+        if(isset($datos["detalle"]) && isset($datos["idMesa"]) && isset($datos["idCliente"]))
         {
-            $retornoValidacion = Comanda::ValidarDatos($datos["detalle"]);
-            if($retornoValidacion == 1)
+            if($datos["datos"]["tipoEmpleado"] == "socio" || $datos["datos"]["tipoEmpleado"] == "mozo")
             {
-                $controlador = new ComandaController();
-                $retornoInsertar = $controlador->insertarComanda(strtolower($datos["detalle"]), $datos["idMesa"]);
-                if($retornoInsertar == 0)
+                $retornoValidacion = Comanda::ValidarDatos($datos["detalle"]);
+                if($retornoValidacion == 1)
                 {
-                    echo json_encode(array("ERROR" => "El ID de la mesa no corresponde a una mesa existente"));
+                    $controlador = new ComandaController();
+                    $retornoInsertar = $controlador->insertarComanda(strtolower($datos["detalle"]), $datos["idMesa"], $datos["idCliente"]);
+                    if($retornoInsertar == 0)
+                    {
+                        echo json_encode(array("ERROR" => "El ID de la mesa no corresponde a una mesa existente"));
+                    }
+                    else if($retornoInsertar == -1)
+                    {
+                        echo json_encode(array("ERROR" => "El ID del cliente no corresponde a un cliente existente"));
+                    }
+                    else
+                    {
+                        echo json_encode(array("OK" => "Se insertó la comanda con éxito con el ID: {$retornoInsertar}"));
+                    }
                 }
                 else
                 {
-                    echo json_encode(array("OK" => "Se insertó la comanda con éxito con el ID: {$retornoInsertar}"));
-                    if(isset($archivo["foto"]))
+                    switch($retornoValidacion)
                     {
-                        $archivo = $archivo["foto"];
-                        $tamanoArchivo = $archivo->getSize();
-                        $tipoArchivo = $archivo->getClientMediaType();
+                        case false:
+                            echo json_encode(array("ERROR" => "El detalle debe estar compuesto por nombres de productos existentes separados por coma. Por ejemplo: 'hamburguesa,quilmes'"));
+                            break;
+                        case -1:
+                            echo json_encode(array("ERROR" => "No se pueden pedir tragos porque no hay bartender"));
+                            break;
+                        case -2:
+                            echo json_encode(array("ERROR" => "No se pueden pedir cervezas porque no hay cervecero"));
+                            break;
+                        case -3:
+                            echo json_encode(array("ERROR" => "No se pueden pedir comidas ni postres porque no hay cocinero"));
+                            break;
+                    }
+                }
+            }
+            else
+            {
+                echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de alta una comanda"));
+            }
+        }
+        else
+        {
+            echo json_encode(array("ERROR" => "Faltan datos necesarios para el alta de la comanda. Se requiere detalle, id de la mesa e id del cliente"));
+        }
+        echo "\n";
+    }
+    else
+    {
+        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+    }
+}
 
-                        $nombreArchivo = $datos["idMesa"] . "-" . $retornoInsertar;
-                        $rutaDestino = __DIR__ . "/../fotos/" . $nombreArchivo;
+function altaFotoComanda($datos, $archivo)
+{
+    if(isset($archivo["foto"]) && isset($datos["id"]))
+    {
+        $controlador = new ComandaController();
+    
+            $archivo = $archivo["foto"];
+            $tamanoArchivo = $archivo->getSize();
+            $tipoArchivo = $archivo->getClientMediaType();
+            $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
+            if($comandaRetornada != false)
+            {
+                $nombreArchivo = $comandaRetornada->idMesa . "-" . $datos["id"];
+                $rutaDestino = __DIR__ . "/../fotos/" . $nombreArchivo;
+            
+                if( !((strpos($tipoArchivo, "png") || strpos($tipoArchivo, "jpeg")) && ($tamanoArchivo < 5242880 )))
+                {
+                    echo json_encode(array("ERROR" => "La extensión o el tamaño del archivo no es correcta"));
+                }
+                else
+                {
+                    if(strpos($tipoArchivo, "png"))
+                    {
+                        $rutaDestino .= ".png";
+                    }
+                    else if(strpos($tipoArchivo, "jpeg"))
+                    {
+                        $rutaDestino .= ".jpg";
+                    }
+            
+                    $archivo->moveTo($rutaDestino);
+                    echo json_encode(array("OK" => "Foto subida con exito"));
+                }
+            }
+            else
+            {
+                echo json_encode(array("ERROR" => "No existe una comanda con el id ingresado"));
+            }
+    }
+    else
+    {
+        echo json_encode(array("ERROR" => "Faltan datos necesarios para la subida de la foto. Se requiere foto e id"));
+    }
+}
+function bajaComanda($datos)
+{
+    if(isset($datos["datos"]["tipoEmpleado"]))
+    {
+        if(isset($datos["id"]))
+        {
+            if($datos["datos"]["tipoEmpleado"] = "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
+            {
+                $controlador = new ComandaController();
+                $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
+                if($comandaRetornada == false)
+                {
+                     echo json_encode(array("ERROR" => "La comanda no existe o ya esta concluida"));
+                }
+                else
+                {
+                    $retornoBaja = $controlador->bajaComanda($datos["id"]);
+                     if($retornoBaja)
+                     {
+                         $controladorMesa = new MesaController();
+                         //chequear que todas las comandas de una mesa esten concluidas antes de cambiar el estado de la mesa a disponible
+                         if(count($controlador->listarComandasPorMesa($comandaRetornada->idMesa)) == 0)
+                         {
+                            $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
+                         }
+                         echo json_encode(array("OK" => "Comanda concluida con exito"));
+                     }
+                     else
+                     {
+                        echo json_encode(array("ERROR" => "No se pudo concluir la comanda"));
+    
+                     }
+                }
+            }
+            else
+            {
+                echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de baja una comanda"));
+            }
+    
+    
+        }
+        else
+        {
+            echo json_encode(array("ERROR" => "Faltan datos necesarios para la baja de la comanda. Se requiere id"));
+        }
+        echo "\n";
+        
+    }
+    else
+    {
+        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+    }
 
-                        if( !((strpos($tipoArchivo, "png") || strpos($tipoArchivo, "jpeg")) && ($tamanoArchivo < 5242880 )))
+}
+
+function modificarComanda($datos)
+{
+    if(isset($datos["datos"]["tipoEmpleado"]))
+    {
+        
+        if(isset($datos["id"]))
+        {
+    
+            if($datos["datos"]["tipoEmpleado"] = "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
+            {
+                $controlador = new ComandaController();
+               $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
+               if($comandaRetornada == false)
+               {
+                    echo json_encode(array("ERROR" => "La comanda no existe"));
+               }
+               else
+               {
+                    $idMesaModificado = $comandaRetornada->idMesa;
+                    $flagModificacion = false;
+                    if(isset($datos["detalle"]) && $datos["detalle"] != $comandaRetornada->detalle)
+                    {
+                        $retornoValidacion = Comanda::ValidarDatos($datos["detalle"]);
+                        if($retornoValidacion == 1)
                         {
-                            echo json_encode(array("ERROR" => "La extensión o el tamaño del archivo no es correcta"));
+                            $detalleModificado = $datos["detalle"];
+                            $flagModificacion = true;
                         }
                         else
                         {
-                            if(strpos($tipoArchivo, "png"))
+                            switch($retornoValidacion)
                             {
-                                $rutaDestino .= ".png";
+                                case false:
+                                    echo json_encode(array("ERROR" => "El detalle debe estar compuesto por un producto existente"));
+                                    break;
+                                case -1:
+                                    echo json_encode(array("ERROR" => "No se pueden pedir tragos porque no hay bartender"));
+                                    break;
+                                case -2:
+                                    echo json_encode(array("ERROR" => "No se pueden pedir cervezas porque no hay cervecero"));
+                                    break;
+                                case -3:
+                                    echo json_encode(array("ERROR" => "No se pueden pedir comidas ni postres porque no hay cocinero"));
+                                    break;
                             }
-                            else if(strpos($tipoArchivo, "jpeg"))
-                            {
-                                $rutaDestino .= ".jpg";
-                            }
-
-                            $archivo->moveTo($rutaDestino);
                         }
                     }
-                }
-            }
-            else
-            {
-                switch($retornoValidacion)
-                {
-                    case false:
-                        echo json_encode(array("ERROR" => "El detalle debe estar compuesto por el nombre de un producto existente"));
-                        break;
-                    case -1:
-                        echo json_encode(array("ERROR" => "No se pueden pedir tragos porque no hay bartender"));
-                        break;
-                    case -2:
-                        echo json_encode(array("ERROR" => "No se pueden pedir cervezas porque no hay cervecero"));
-                        break;
-                    case -3:
-                        echo json_encode(array("ERROR" => "No se pueden pedir comidas ni postres porque no hay cocinero"));
-                        break;
-                }
-            }
-        }
-        else
-        {
-            echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de alta una comanda"));
-        }
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "Faltan datos necesarios para el alta de la comanda. Se requiere detalle e id de la mesa"));
-    }
-    echo "\n";
-}
-
-function bajaComanda($datos, $login)
-{
-    if(isset($datos["id"]))
-    {
-        if($login["tipoEmpleado"] = "mozo" || $login["tipoEmpleado"] == "socio")
-        {
-            $controlador = new ComandaController();
-            $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
-            if($comandaRetornada == false)
-            {
-                 echo json_encode(array("ERROR" => "La comanda no existe o ya esta concluida"));
-            }
-            else
-            {
-                 $controlador->modificarComanda($comandaRetornada->id, $comandaRetornada->detalle, $comandaRetornada->idMesa, "concluida");
-                 $controladorMesa = new MesaController();
-                 //chequear que todas las comandas de una mesa esten concluidas antes de cambiar el estado de la mesa a disponible
-                 if(count($controlador->listarComandasPorMesa($comandaRetornada->idMesa)) == 0)
-                 {
-                     $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
-                 }
-                 echo json_encode(array("OK" => "Comanda concluida con exito"));
-            }
-        }
-        else
-        {
-            echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de baja una comanda"));
-        }
-
-
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "Faltan datos necesarios para la baja de la comanda. Se requiere id"));
-    }
-    echo "\n";
-}
-
-function modificarComanda($datos, $login)
-{
-
-    if(isset($datos["id"]))
-    {
-
-        if($login["tipoEmpleado"] = "mozo" || $login["tipoEmpleado"] == "socio")
-        {
-            $controlador = new ComandaController();
-           $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
-           if($comandaRetornada == false)
-           {
-                echo json_encode(array("ERROR" => "La comanda no existe"));
-           }
-           else
-           {
-                $detalleModificado = $comandaRetornada->detalle;
-                $idMesaModificado = $comandaRetornada->idMesa;
-                $flagModificacion = false;
-                if(isset($datos["detalle"]) && $datos["detalle"] != $detalleModificado)
-                {
-                    $retornoValidacion = Comanda::ValidarDatos($datos["detalle"]);
-                    if($retornoValidacion == 1)
+                    if(isset($datos["idMesa"]) && $datos["idMesa"] != $idMesaModificado)
                     {
-                        $detalleModificado = $datos["detalle"];
+                        $idMesaModificado = $datos["idMesa"];
                         $flagModificacion = true;
                     }
-                    else
+                    if($flagModificacion)
                     {
-                        switch($retornoValidacion)
+                        $arrayProductosOriginal = explode(",", $comandaRetornada->detalle);
+                        $arrayProductosModificar = explode(",", $datos["detalle"]);
+                        if(count($arrayProductosOriginal) >= count($arrayProductosModificar))
                         {
-                            case false:
-                                echo json_encode(array("ERROR" => "El detalle debe estar compuesto por un producto existente"));
-                                break;
-                            case -1:
-                                echo json_encode(array("ERROR" => "No se pueden pedir tragos porque no hay bartender"));
-                                break;
-                            case -2:
-                                echo json_encode(array("ERROR" => "No se pueden pedir cervezas porque no hay cervecero"));
-                                break;
-                            case -3:
-                                echo json_encode(array("ERROR" => "No se pueden pedir comidas ni postres porque no hay cocinero"));
-                                break;
+                            $arrayProductosNuevo = array();
+                            for($i=0 ; $i<count($arrayProductosOriginal) ; $i++)
+                            {
+                                if(isset($arrayProductosModificar[$i]))
+                                {
+                                    array_push($arrayProductosNuevo, $arrayProductosModificar[$i]);
+                                }
+                                else
+                                {
+                                    array_push($arrayProductosNuevo, $arrayProductosOriginal[$i]);
+                                }
+                            }
+                            
+                            $flagPrimero = false;
+                            $stringProductosNuevo = "";
+                            foreach($arrayProductosNuevo as $producto)
+                            {
+                                if(!$flagPrimero)
+                                {
+                                    $stringProductosNuevo = $producto;
+                                    $flagPrimero = true;
+                                }
+                                else
+                                {
+                                    $stringProductosNuevo .= "," . $producto;
+                                }
+                            }
+    
+    
+    
+                            $retornoModificacion = $controlador->modificarComanda($datos["id"], $stringProductosNuevo, $idMesaModificado, $comandaRetornada->estado);      
+                            if($retornoModificacion == false)
+                            {
+                                echo json_encode(array("ERROR" => "El id de la mesa no corresponde a una mesa existente"));
+                            }
+                            else
+                            {
+                                echo json_encode(array("OK" => "Comanda modificada con exito"));
+                            }
+                        }
+                        else
+                        {
+                            echo json_encode(array("ERROR" => "No puede agregar productos a la comanda, solo modificar"));
                         }
                     }
-                }
-                if(isset($datos["idMesa"]) && $datos["idMesa"] != $idMesaModificado)
-                {
-                    $idMesaModificado = $datos["idMesa"];
-                    $flagModificacion = true;
-                }
-                if($flagModificacion)
-                {
-                    $retornoModificacion = $controlador->modificarComanda($datos["id"], $detalleModificado, $idMesaModificado, $comandaRetornada->estado);      
-                    if($retornoModificacion == false)
-                    {
-                        echo json_encode(array("ERROR" => "El id de la mesa no corresponde a una mesa existente"));
-                    }
                     else
                     {
-                        echo json_encode(array("OK" => "Comanda modificada con exito"));
+                        echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
                     }
-                }
-                else
-                {
-                    echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
-                }
-           }
-
+               }
+    
+            }
+            else
+            {
+                echo json_encode(array("ERROR" => "Debe ser mozo o socio para modificar una comanda"));
+            }
+              
         }
         else
         {
-            echo json_encode(array("ERROR" => "Debe ser mozo o socio para modificar una comanda"));
+            echo json_encode(array("ADVERTENCIA" => "Faltan datos necesarios para la modificacion de la comanda. Se requiere id para identificar la comanda a modificar"));
         }
-          
+        echo "\n";
     }
     else
     {
-        echo json_encode(array("ADVERTENCIA" => "Faltan datos necesarios para la modificacion de la comanda. Se requiere id para identificar la comanda a modificar"));
+        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
     }
-    echo "\n";
 }
 
 function listadoComanda($datos)
 {
-    if(isset($datos["parametro"]))
+    if(isset($datos["datos"]["tipoEmpleado"]))
     {
-        $controladorComanda = new ComandaController();
-        if($datos["parametro"] == "una")
+        
+        if(isset($datos["parametro"]))
         {
-            if(isset($datos["id"]))
+            $controladorComanda = new ComandaController();
+            if($datos["parametro"] == "una")
             {
-                $comandaRetornada = $controladorComanda->buscarComandaPorId($datos["id"]);
-                
-                if($comandaRetornada == false)
+                if(isset($datos["id"]))
                 {
-                    echo json_encode(array("ERROR" => "No existe una comanda con ese ID"));
+                    $comandaRetornada = $controladorComanda->buscarComandaPorId($datos["id"]);
+                    $arrayDetalle = explode(",", $comandaRetornada->detalle);
+                    $arrayEstado = explode(",", $comandaRetornada->detalle);
+                    $arrayIdProducto = explode(",", $comandaRetornada->idProducto);
+                    $arrayTiempos = explode(",", $comandaRetornada->tiempoEstimadoFinalizacion);
+    
+                    if($comandaRetornada == false)
+                    {
+                        echo json_encode(array("ERROR" => "No existe una comanda con ese ID"));
+                    }
+                    else
+                    {
+                        $controladorProducto = new ProductoController();
+    
+                        $i = 0;
+                        foreach($arrayDetalle as $producto)
+                        {
+                            $tipoProducto = ($controladorProducto->buscarProductoPorNombre($producto))->tipo;
+        
+                            switch($datos["datos"]["tipoEmpleado"])
+                            {
+                                case "cocinero":
+                                    if($tipoProducto == "comida" || $tipoProducto == "postre")
+                                    {
+                                        echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                    }
+                                    else
+                                    {
+                                        echo json_encode(array("ADVERTENCIA" => "Un cocinero solo puede listar comidas y postres"));
+                                    }
+                                break;
+                                case "bartender":
+                                    if($tipoProducto == "trago")
+                                    {
+                                        echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                    }
+                                    else
+                                    {
+                                        echo json_encode(array("ADVERTENCIA" => "Un bartender solo puede listar tragos"));
+        
+                                    }
+                                break;
+                                case "cervecero":
+                                    if($tipoProducto == "cerveza")
+                                    {
+                                        echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                    }
+                                    else
+                                    {
+                                        echo json_encode(array("ADVERTENCIA" => "Un cervecero solo puede listar cervezas"));
+                                    }
+                                break;
+                                case "mozo":
+                                case "socio":
+                                    echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                break;
+                            }
+                            echo "\n";
+                            $i++;
+                        }
+                        
+                    }
                 }
                 else
                 {
-                    $controladorProducto = new ProductoController();
-
-                    $tipoProducto = ($controladorProducto->buscarProductoPorNombre($comandaRetornada->detalle))->tipo;
-                    switch($datos["tipoEmpleado"])
-                    {
-                        case "cocinero":
-                            if($tipoProducto == "comida" || $tipoProducto == "postre")
-                            {
-                                echo $comandaRetornada->mostrarDatos();
-                            }
-                            else
-                            {
-                                echo json_encode(array("ERROR" => "Un cocinero solo puede listar comidas y postres"));
-                            }
-                        break;
-                        case "bartender":
-                            if($tipoProducto == "trago")
-                            {
-                                echo $comandaRetornada->mostrarDatos();
-                            }
-                            else
-                            {
-                                echo json_encode(array("ERROR" => "Un bartender solo puede listar tragos"));
-
-                            }
-                        break;
-                        case "cervecero":
-                            if($tipoProducto == "cerveza")
-                            {
-                                echo $comandaRetornada->mostrarDatos();
-                            }
-                            else
-                            {
-                                echo json_encode(array("ERROR" => "Un cervecero solo puede listar cervezas"));
-                            }
-                        break;
-                        case "mozo":
-                        case "socio":
-                            echo $comandaRetornada->mostrarDatos();
-                        break;
-                    }
-                    
+                    echo json_encode(array("ERROR" => "Para listar una comanda se necesita el ID"));
                 }
+            }
+            else if($datos["parametro"] == "todas")
+            {
+                if(isset($datos["estado"]))
+                {
+                    if($datos["estado"] == "pendiente" || $datos["estado"] == "en preparacion" || $datos["estado"] == "listo para servir")
+                    {
+                        switch($datos["datos"]["tipoEmpleado"])
+                        {
+                            case "cocinero":
+                                $comandasRetornadas = $controladorComanda->listarProductosComandaPorTipoYEstado("comida", $datos["estado"]);
+                                $postresRetornados = $controladorComanda->listarProductosComandaPorTipoYEstado("postre", $datos["estado"]);
+                                foreach($postresRetornados as $postre)
+                                {
+                                    array_push($comandasRetornadas, $postre);
+                                }
+                            break;
+                            case "bartender":
+                                $comandasRetornadas =  $controladorComanda->listarProductosComandaPorTipoYEstado("trago", $datos["estado"]);
+                            break;
+                            case "cervecero":
+                                $comandasRetornadas =  $controladorComanda->listarProductosComandaPorTipoYEstado("cerveza", $datos["estado"]);
+                            break;
+                            case "mozo":
+                            case "socio":
+                                $comandasRetornadas =  $controladorComanda->listarProductosComandaPorEstado($datos["estado"]);
+                            break;
+                        }
+        
+                        if($comandasRetornadas)
+                        {
+                            foreach($comandasRetornadas as $comanda)
+                            {
+                                echo $comanda->mostrarProductoComanda();
+                                echo "\n";
+                            }
+                        }
+                        else
+                        {
+                            echo json_encode(array("ADVERTENCIA" => "No hay ninguna comanda del tipo y estado correspondiente"));
+        
+                        }
+                    }
+                    else
+                    {
+                        echo json_encode(array("ERROR" => "El parametro estado debe ser 'pendiente', 'en preparacion' o 'listo para servir'"));
+                    }
+                }
+                else
+                {
+                    echo json_encode(array("ERROR" => "Si va a listar todas, debe ingresar el estado de las comandas a listar"));
+                }
+                
             }
             else
             {
-                echo json_encode(array("ERROR" => "Para listar una comanda se necesita el ID"));
+                echo json_encode(array("ERROR" => "El 'parametro' debe ser 'una' o 'todas'"));
             }
-        }
-        else if($datos["parametro"] == "todas")
-        {
-
-                switch($datos["tipoEmpleado"])
-                {
-                    case "cocinero":
-                        $comandasRetornadas = $controladorComanda->listarComandasPorTipo("comida");
-                        $postresRetornados = $controladorComanda->listarComandasPorTipo("postre");
-                        foreach($postresRetornados as $postre)
-                        {
-                            array_push($comandasRetornadas, $postre);
-                        }
-                    break;
-                    case "bartender":
-                        $comandasRetornadas =  $controladorComanda->listarComandasPorTipo("trago");
-                    break;
-                    case "cervecero":
-                        $comandasRetornadas =  $controladorComanda->listarComandasPorTipo("cerveza");
-                    break;
-                    case "mozo":
-                    case "socio":
-                        $comandasRetornadas =  $controladorComanda->listarComandas();
-                    break;
-                }
-
-                if($comandasRetornadas)
-                {
-                    foreach($comandasRetornadas as $comanda)
-                    {
-                        echo $comanda->mostrarDatos();
-                        echo "\n";
-                    }
-                }
-                else
-                {
-                    echo json_encode(array("ADVERTENCIA" => "No hay ninguna comanda del tipo correspondiente"));
-
-                }
-            
         }
         else
         {
-            echo json_encode(array("ERROR" => "El 'parametro' debe ser 'una' o 'todas'"));
+            echo json_encode(array("ERROR" => "Error: faltan datos necesarios para el listado de las comandas. Se requiere parametro para listar una o todas"));
         }
+        echo "\n";
     }
     else
     {
-        echo json_encode(array("ERROR" => "Error: faltan datos necesarios para el listado de las comandas. Se requiere parametro para listar una o todas"));
+        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
     }
-    echo "\n";
 }
 
 function preparacionComanda($datos)
 {
-    if(isset($datos["id"]) && isset($datos["estado"]))
+    if(isset($datos["datos"]["tipoEmpleado"]))
     {
-        $controladorComanda = new ComandaController();
-        $comandaRetornada = $controladorComanda->buscarComandaPorId($datos["id"]);
-        
-        if($comandaRetornada)
+        if(isset($datos["estado"]) && isset($datos["idProducto"]))
         {
-            if($datos["estado"] == "en preparacion" || $datos["estado"] == "listo para servir")
-            {
-                if($comandaRetornada->estado != $datos["estado"])
-                {
-                    $controladorProducto = new ProductoController();
+            $controladorComanda = new ComandaController();
     
-                    $tipoProducto = ($controladorProducto->buscarProductoPorNombre($comandaRetornada->detalle))->tipo;
-                    
-                    switch($datos["tipoEmpleado"])
+            //chequear si el idproducto existe
+            $productoComandaRetornado = $controladorComanda->buscarProductoComanda($datos["idProducto"]);
+    
+    
+    
+            if($productoComandaRetornado)
+            {
+                if($datos["estado"] == "en preparacion" || $datos["estado"] == "listo para servir")
+                {
+                    if($productoComandaRetornado->estado != $datos["estado"])
                     {
-                        case "cocinero":
-                            if($tipoProducto == "comida" || $tipoProducto == "postre")
-                            {
-                                $controladorComanda->modificarComanda($datos["id"], $comandaRetornada->detalle, $comandaRetornada->idMesa, $datos["estado"]);
-                                $flagPreparacion = true;     
-                            }
-                            else
-                            {
-                                echo json_encode(array("ERROR" => "Un cocinero solo puede preparar comidas y postres"));
-                            }
-                        break;
-                        case "bartender":
-                            if($tipoProducto == "trago")
-                            {
-                                $controlador->modificarComanda($datos["id"], $comandaRetornada->detalle, $comandaRetornada->idMesa, $datos["estado"]);
-                                $flagPreparacion = true;     
-      
-                            }
-                            else
-                            {
-                                echo json_encode(array("ERROR" => "Un bartender solo puede preparar tragos"));
-        
-                            }
-                        break;
-                        case "cervecero":
-                            if($tipoProducto == "cerveza")
-                            {
-                                $controlador->modificarComanda($datos["id"], $comandaRetornada->detalle, $comandaRetornada->idMesa, $datos["estado"]);     
+                        $controladorProducto = new ProductoController();
+                        $comandaRetornada = $controladorComanda->buscarComandaPorId($productoComandaRetornado->id);
+                        $tipoProducto = ($controladorProducto->buscarProductoPorNombre($productoComandaRetornado->detalle))->tipo;
+                        
+                        $flagPreparacion = false;
+                        switch($datos["datos"]["tipoEmpleado"])
+                        {
+                            case "cocinero":
+                                if($tipoProducto == "comida" || $tipoProducto == "postre")
+                                {
+                                    $flagPreparacion = true;     
+                                }
+                                else
+                                {
+                                    echo json_encode(array("ERROR" => "Un cocinero solo puede preparar comidas y postres"));
+                                }
+                            break;
+                            case "bartender":
+                                if($tipoProducto == "trago")
+                                {
+                                    $flagPreparacion = true;     
+          
+                                }
+                                else
+                                {
+                                    echo json_encode(array("ERROR" => "Un bartender solo puede preparar tragos"));
+            
+                                }
+                            break;
+                            case "cervecero":
+                                if($tipoProducto == "cerveza")
+                                {
+                                    $flagPreparacion = true;      
+                                }
+                                else
+                                {
+                                    echo json_encode(array("ERROR" => "Un cervecero solo puede preparar cervezas"));
+                                }
+                            break;
+                            case "mozo":
+                            case "socio":
                                 $flagPreparacion = true;      
+                            break;
+                        }
+    
+                        if($flagPreparacion)
+                        {
+                            $productoComandaRetornado->estado = $datos["estado"];
+                            if($controladorComanda->PrepararProductoComanda($productoComandaRetornado))
+                            {
+                                echo json_encode(array("OK" => "El estado de la comanda fue cambiado con exito"));
+                                //creo que el mozo es quien debe cambiar el estado de la mesa, pero este codigo comentado lo hace automaticamente
+                                // $flagTodoListo = false;
+                                // $arrayIdProducto = explode(",", $comandaRetornada->idProducto);
+                                // $arrayEstado = explode(",", $comandaRetornada->estado);
+                                // for($i=0 ; $i<count($arrayEstado) ; $i++)
+                                // {
+                                //     if($arrayEstado[$i] == "listo para servir" || $arrayIdProducto[$i] == $productoComandaRetornado->idProducto)
+                                //     {
+                                //         $flagTodoListo = true;
+                                //     }
+                                //     else
+                                //     {
+                                //         $flagTodoListo = false;
+                                //         break;
+                                //     }
+                                // }
+                                // if($flagTodoListo)
+                                // {
+                                //     $controladorMesa = new MesaController();
+                                //     $mesaRetornada = $controladorMesa->buscarMesaPorId($productoComandaRetornado->idMesa);
+                                //     $controladorMesa->modificarMesa($productoComandaRetornado->idMesa, "con cliente comiendo");
+                                // }
                             }
                             else
                             {
-                                echo json_encode(array("ERROR" => "Un cervecero solo puede preparar cervezas"));
+                                echo json_encode(array("ERROR" => "Ocurrio un error al cambiar el estado de la comanda"));
                             }
-                        break;
-                        case "mozo":
-                        case "socio":
-                            $controlador->modificarComanda($datos["id"], $comandaRetornada->detalle, $comandaRetornada->idMesa, $datos["estado"]);      
-                        break;
+    
+                        }
                     }
-
-                    if($flagPreparacion)
+                    else
                     {
-                        echo json_encode(array("OK" => "El estado de la comanda fue cambiado con exito"));
-
+                        echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion, el estado ya era '{$productoComandaRetornado->estado}"));
                     }
                 }
                 else
                 {
-                    echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion, el estado ya era '{$comandaRetornada->estado}"));
+                    echo json_encode(array("ERROR" => "El estado debe ser 'en preparacion' o 'listo para servir'"));
+                }
+                
+    
+            }
+            else
+            {
+                echo json_encode(array("ERROR" => "No existe un producto de comanda con ese ID"));
+            }
+        }
+        else
+        {
+            echo json_encode(array("ERROR" => "Error: faltan datos necesarios para el listado de las comandas. Se requiere el id del producto de la comanda y estado"));
+        }
+        echo "\n"; 
+    }
+    else
+    {
+        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+    }
+    
+}
+
+function cobrarComanda($datos)
+{
+    if(isset($datos["datos"]["tipoEmpleado"]))
+    {
+        if(isset($datos["id"]))
+        {
+            if($datos["datos"]["tipoEmpleado"] = "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
+            {
+                $controlador = new ComandaController();
+                $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
+                if($comandaRetornada == false)
+                {
+                     echo json_encode(array("ERROR" => "La comanda no existe"));
+                }
+                else
+                {
+                    
+                    $retornoBaja = $controlador->bajaComanda($datos["id"]);
+                     if($retornoBaja)
+                     {
+                         $controladorMesa = new MesaController();
+                         $mesaRetornada = $controladorMesa->buscarMesaPorId($comandaRetornada->idMesa);
+                            //chequear que la mesa este en cliente pagando
+                            if($mesaRetornada->estado == "con cliente pagando")
+                            {
+                                $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
+                                echo json_encode(array("OK" => "Comanda cobrada con exito"));
+                            }
+                            else
+                            {
+                                echo json_encode(array("ERROR" => "El cliente no pidio la cuenta"));
+                            }
+                         
+                     }
+                     else
+                     {
+                        echo json_encode(array("ERROR" => "No se pudo cobrar la comanda"));
+    
+                     }
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "El estado debe ser 'en preparacion' o 'listo para servir'"));
+                echo json_encode(array("ERROR" => "Debe ser mozo o socio para cobrar una comanda"));
             }
-            
-
+    
+    
         }
         else
         {
-            echo json_encode(array("ERROR" => "No existe una comanda con ese ID"));
+            echo json_encode(array("ERROR" => "Faltan datos necesarios para cobrar la comanda. Se requiere id"));
         }
+        echo "\n";
     }
     else
     {
-        echo json_encode(array("ERROR" => "Error: faltan datos necesarios para el listado de las comandas. Se requiere id de la comanda y estado"));
+        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
     }
-    echo "\n"; 
 }
 
 ?>

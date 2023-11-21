@@ -5,14 +5,21 @@ require_once __DIR__ . '/../models/empleado.php';
 class EmpleadoController {
 
     public function insertarEmpleado($nombre, $apellido, $usuario, $clave, $estado, $tipo) {
-        $empleado = new Empleado();
-        $empleado->nombre = $nombre;
-        $empleado->apellido = $apellido;
-        $empleado->usuario = $usuario;
-        $empleado->clave = $clave;
-        $empleado->estado = $estado;
-        $empleado->tipo = $tipo;
-        return $empleado->InsertarElEmpleadoParametros();
+        if($tipo == "socio" && count(self::listarEmpleadosPorTipo("socio")) == 3)
+        {
+            return -1;
+        }
+        else
+        {
+            $empleado = new Empleado();
+            $empleado->nombre = $nombre;
+            $empleado->apellido = $apellido;
+            $empleado->usuario = $usuario;
+            $empleado->clave = $clave;
+            $empleado->estado = $estado;
+            $empleado->tipo = $tipo;
+            return $empleado->InsertarElEmpleadoParametros();
+        }
     }
 
     public function modificarEmpleado($id, $nombre, $apellido, $usuario, $clave, $estado, $tipo) {
@@ -27,12 +34,11 @@ class EmpleadoController {
         return $empleado->ModificarEmpleadoParametros();
     }
 
-    public function borrarEmpleado($id) {
-        $empleado = new Empleado();
-        $empleado->id = $id;
-        return $empleado->BorrarEmpleado();
+    public function bajaEmpleado($id) {
+        $empleado = Empleado::TraerUnEmpleado($id);
+        $empleado->estado = "borrado";
+        return $empleado->ModificarEmpleadoParametros();
     }
-
     
     public function listarEmpleados() {
         return Empleado::TraerTodosLosEmpleados();

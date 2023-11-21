@@ -30,13 +30,6 @@ class Empleado
             return false;
         }
     }
-    public function InsertarElEmpleado()
-    {
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("INSERT into empleados (nombre,apellido,usuario,clave,estado,tipo)values('$this->nombre','$this->apellido','$this->usuario','$this->clave','$this->estado','$this->tipo')");
-        $consulta->execute();
-        return $objetoAccesoDato->RetornarUltimoIdInsertado();
-    }
 
     public function InsertarElEmpleadoParametros()
     {
@@ -100,22 +93,6 @@ class Empleado
         return $empleadoBuscado;
     }
 
-    public function ModificarEmpleado()
-    {
-
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("
-				update empleados 
-				set nombre='$this->nombre',
-				apellido='$this->apellido',
-				usuario='$this->usuario',
-                clave='$this->clave',
-                estado='$this->estado',
-                tipo='$this->tipo'
-				WHERE id='$this->id'");
-        return $consulta->execute();
-    }
-
     public function ModificarEmpleadoParametros()
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
@@ -137,18 +114,5 @@ class Empleado
         $consulta->bindValue(':tipo', $this->tipo, PDO::PARAM_STR);
         return $consulta->execute();
     }
-
-    public function BorrarEmpleado()
-    {
-        $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("
-				delete 
-				from empleados				
-				WHERE id=:id");
-        $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
-        $consulta->execute();
-        return $consulta->rowCount();
-    }
-
 }
 ?>
