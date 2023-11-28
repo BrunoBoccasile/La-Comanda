@@ -3,11 +3,11 @@ require_once __DIR__ . "/../controladores/comandaController.php";
 require_once __DIR__ . "/../controladores/encuestaController.php";
 require_once __DIR__ . "/../models/encuesta.php";
 
-function altaEncuesta($datos)
+class VisorEncuesta
 {
-    if(isset($datos["datos"]["idUsuario"]))
+    static function altaEncuesta($datos)
     {
-        if(isset($datos["id"]) && isset($datos["puntosRestaurante"]) && isset($datos["puntosMesa"]) && isset($datos["puntosMozo"]) && isset($datos["puntosCocinero"]) && isset($datos["experiencia"]))
+        if(isset($datos["datos"]["idUsuario"]))
         {
             if(Encuesta::ValidarEncuesta($datos["puntosRestaurante"], $datos["puntosMesa"], $datos["puntosMozo"], $datos["puntosCocinero"], $datos["experiencia"]))
             {
@@ -20,87 +20,150 @@ function altaEncuesta($datos)
                     {
                         if($comandaRetornada->idCliente == $datos["datos"]["idUsuario"])
                         {
-                            $encuesta = new Encuesta($comandaRetornada->nombreCliente, $datos["id"], $datos["puntosRestaurante"], $datos["puntosMesa"], $datos["puntosMozo"], $datos["puntosCocinero"], $datos["experiencia"]);
-                            $controladorEncuesta->guardarEncuesta($encuesta);
-                            echo json_encode(array("OK" => "Encuesta guardada con exito"));  
+                            $controladorEncuesta->guardarEncuesta( $comandaRetornada->nombreCliente, $datos["id"], $datos["puntosRestaurante"], $datos["puntosMesa"], $datos["puntosMozo"], $datos["puntosCocinero"], $datos["experiencia"]);
+                            $arrayRespuesta["status"] = "OK";
+                            $arrayRespuesta["message"] = "Encuesta guardada con exito";
                         }
                         else
                         {                    
-                            echo json_encode(array("ERROR" => "La comanda ingresada no corresponde a su usuario"));  
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "La comanda ingresada no corresponde a su usuario";
                         }
                     }
                     else
                     {
-                        echo json_encode(array("ERROR" => "Ya existe una encuesta con ese id"));  
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "Ya existe una encuesta con ese id";
                     }
-               }
-               else
-               {
-                    echo json_encode(array("ERROR" => "La comanda no existe o no esta concluida"));
-               }
-            }
-            else
-            {
-                echo json_encode(array("ERROR" => "Datos invalidos. Los puntajes deben ser del 1 al 10 y la experiencia no debe superar los 66 caracteres"));
-            }
-        }
-        else
-        {
-            echo json_encode(array("ERROR" => "faltan datos necesarios para el alta de la encuesta. Se requiere id, puntosRestaurante, puntosMesa, puntosMozo, puntosCocinero y experiencia"));
-        }
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un cliente"));  
-    }
-}
-
-function listarMejoresComentarios($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if($datos["datos"]["tipoEmpleado"] == "socio")
-        {
-            $controladorEncuesta = new EncuestaController();
-            $encuestasRetornadas = $controladorEncuesta->retornarTodasLasEncuestas();
-            $arrayEncuestasobj = array();
-            if(!empty($encuestasRetornadas))
-            {
-                $arrayEncuestasobj;
-                for($i=0 ; $i<count($encuestasRetornadas) ; $i++)
-                {
-                    $encuesta = new Encuesta($encuestasRetornadas[$i][0], $encuestasRetornadas[$i][1], $encuestasRetornadas[$i][2], $encuestasRetornadas[$i][3], $encuestasRetornadas[$i][4], $encuestasRetornadas[$i][5], $encuestasRetornadas[$i][6]);
-                    array_push($arrayEncuestasobj, $encuesta);
                 }
-    
-                usort($arrayEncuestasobj, "compararPorSumaDePuntos");
-    
-                foreach($arrayEncuestasobj as $encuesta)
+                else
                 {
-                    echo $encuesta->mostrarDatos();
-                    echo "\n";
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "La comanda no existe o no esta concluida";
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "No hay encuestas"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Datos invalidos. Los puntajes deben ser del 1 al 10 y la experiencia no debe superar los 66 caracteres";
             }
-    
+
         }
         else
         {
-            echo json_encode(array("ERROR" => "Debe ser socio para listar los mejores comentarios"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un cliente";
         }
+        return $arrayRespuesta;
     }
-    else
+    
+    static function listarMejoresComentarios($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+        if(isset($datos["datos"]["tipoEmpleado"]))
+        {
+            if($datos["datos"]["tipoEmpleado"] == "socio")
+            {
+                $controladorEncuesta = new EncuestaController();
+                $encuestasRetornadas = $controladorEncuesta->listarMejoresEncuestas();
+                if($encuestasRetornadas != false)
+                {
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Listado realizado con exito";  
+                    $arrayListado = array();
+                    foreach($encuestasRetornadas as $encuesta)
+                    {
+                        array_push($arrayListado, $encuesta->mostrarDatos());
+                    }
+                    $arrayRespuesta["listado"] = $arrayListado;
+                }
+                else
+                {
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "No hay encuestas";        
+                }
+            }
+            else
+            {
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para listar los mejores comentarios";
+            }
+        }
+        else
+        {
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
+        }
+        return $arrayRespuesta;
     }
+
+    static function cargaCsv($datos, $archivo)
+    {
+        if(isset($datos["datos"]["tipoEmpleado"]))
+        {
+            if($datos["datos"]["tipoEmpleado"] == "socio")
+            {
+                $archivo = $archivo["csv"];
+                $tipoArchivo = $archivo->getClientMediaType();
+
+                if ($tipoArchivo == "text/csv") 
+                {
+                    $controladorEncuesta = new EncuestaController();
+                    if($controladorEncuesta->cargaCsvABaseDeDatos($archivo))
+                    {
+                        $arrayRespuesta["status"] = "OK";
+                        $arrayRespuesta["message"] = "Archivo cargado con exito";
+                    }
+                    else
+                    {
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "Formato incorrecto (nombreCliente,id,puntosRestaurante,puntosMesa,puntosMozo,puntosCocinero,experiencia) y/o datos invalidos";
+                    }
+
+                } 
+                else 
+                {
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El archivo debe ser un archivo CSV";
+                }
+            }
+            else
+            {
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para cargar un CSV";
+            } 
+
+        }
+        else
+        {
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
+        }
+        return $arrayRespuesta;
+    }
+
+    static function descargaCsv($datos)
+    {
+        $controladorEncuesta = new EncuestaController();
+        $encuestasRetornadas = $controladorEncuesta->listarEncuestas();
+        if($encuestasRetornadas)
+        {
+            $cadenaCsv = "";
+            foreach($encuestasRetornadas as $encuesta)
+            {
+                $cadenaCsv .= implode(',', (array)$encuesta) . "\n";
+            }   
+            $arrayRespuesta["status"] = "OK";
+            $arrayRespuesta["message"] = "Csv descargado";
+            $arrayRespuesta["csv"] = $cadenaCsv;
+        }
+        else
+        {
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "No hay encuestas";
+        }
+        return $arrayRespuesta;
+    }
+
 }
 
-function compararPorSumaDePuntos($a, $b) {
-    $sumaA = $a->puntosRestaurante + $a->puntosCocinero + $a->puntosMozo + $a->puntosMesa;
-    $sumaB = $b->puntosRestaurante + $b->puntosCocinero + $b->puntosMozo + $b->puntosMesa;
-    return $sumaB - $sumaA;
-}
 ?>

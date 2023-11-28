@@ -17,7 +17,7 @@ class Comanda
 
     public function mostrarProductoComanda()
     {
-        return json_encode(array("ID" => $this->id, "ID CLIENTE" => $this->idCliente, "NOMBRE CLIENTE" => $this->nombreCliente, "ID PRODUCTO" => $this->idProducto, "DETALLE" => $this->detalle, "ESTADO" => $this->estado, "TIEMPO ESTIMADO FINALIZACION" => $this->tiempoEstimadoFinalizacion, "ID MESA" => $this->idMesa, "COSTO TOTAL" => $this->costoTotal, "FECHA Y HORA CREACION" => $this->fechaHoraCreacion));
+        return array("id" => $this->id, "idCliente" => $this->idCliente, "nombreCliente" => $this->nombreCliente, "idProducto" => $this->idProducto, "detalle" => $this->detalle, "estado" => $this->estado, "tiempoEstimadoFinalizacion" => $this->tiempoEstimadoFinalizacion, "idMesa" => $this->idMesa, "costoTotal" => $this->costoTotal, "fechaHoraCreacion" => $this->fechaHoraCreacion);
     }
 
     public static function generarIdAlfanumerico() 

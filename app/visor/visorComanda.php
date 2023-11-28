@@ -2,12 +2,13 @@
 require_once __DIR__ . "/../controladores/comandaController.php";
 require_once __DIR__ . "/../controladores/mesaController.php";
 require_once __DIR__ . "/../controladores/productoController.php";
-function altaComanda($datos)
+
+class VisorComanda
 {
-    if(isset($datos["datos"]["tipoEmpleado"]))
+    
+    static function altaComanda($datos)
     {
-        
-        if(isset($datos["detalle"]) && isset($datos["idMesa"]) && isset($datos["idCliente"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "socio" || $datos["datos"]["tipoEmpleado"] == "mozo")
             {
@@ -18,102 +19,123 @@ function altaComanda($datos)
                     $retornoInsertar = $controlador->insertarComanda(strtolower($datos["detalle"]), $datos["idMesa"], $datos["idCliente"]);
                     if($retornoInsertar == 0)
                     {
-                        echo json_encode(array("ERROR" => "El ID de la mesa no corresponde a una mesa existente"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "El ID de la mesa no corresponde a una mesa existente";
                     }
                     else if($retornoInsertar == -1)
                     {
-                        echo json_encode(array("ERROR" => "El ID del cliente no corresponde a un cliente existente"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "El ID del cliente no corresponde a un cliente existente";
                     }
                     else
                     {
-                        echo json_encode(array("OK" => "Se insertó la comanda con éxito con el ID: {$retornoInsertar}"));
+                        $arrayRespuesta["status"] = "OK";
+                        $arrayRespuesta["message"] = "Se insertó la comanda con éxito con el ID: {$retornoInsertar}";
                     }
                 }
                 else
                 {
+                    $arrayRespuesta["status"] = "ERROR";
                     switch($retornoValidacion)
                     {
                         case false:
-                            echo json_encode(array("ERROR" => "El detalle debe estar compuesto por nombres de productos existentes separados por coma. Por ejemplo: 'hamburguesa,quilmes'"));
+                            $arrayRespuesta["message"] = "El detalle debe estar compuesto por nombres de productos existentes separados por coma. Por ejemplo: 'hamburguesa,quilmes'";
                             break;
                         case -1:
-                            echo json_encode(array("ERROR" => "No se pueden pedir tragos porque no hay bartender"));
+                            $arrayRespuesta["message"] = "No se pueden pedir tragos porque no hay bartender";
                             break;
                         case -2:
-                            echo json_encode(array("ERROR" => "No se pueden pedir cervezas porque no hay cervecero"));
+                            $arrayRespuesta["message"] = "No se pueden pedir cervezas porque no hay cervecero";
                             break;
                         case -3:
-                            echo json_encode(array("ERROR" => "No se pueden pedir comidas ni postres porque no hay cocinero"));
+                            $arrayRespuesta["message"] = "No se pueden pedir comidas ni postres porque no hay cocinero";
                             break;
                     }
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de alta una comanda"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser mozo o socio para dar de alta una comanda";
             }
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para el alta de la comanda. Se requiere detalle, id de la mesa e id del cliente"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function altaFotoComanda($datos, $archivo)
-{
-    if(isset($archivo["foto"]) && isset($datos["id"]))
-    {
-        $controlador = new ComandaController();
     
-            $archivo = $archivo["foto"];
-            $tamanoArchivo = $archivo->getSize();
-            $tipoArchivo = $archivo->getClientMediaType();
-            $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
-            if($comandaRetornada != false)
+    static function altaFotoComanda($datos, $archivo)
+    {
+        if(isset($datos["datos"]["tipoEmpleado"]))
+        {
+            if(isset($archivo["foto"]))
             {
-                $nombreArchivo = $comandaRetornada->idMesa . "-" . $datos["id"];
-                $rutaDestino = __DIR__ . "/../fotos/" . $nombreArchivo;
-            
-                if( !((strpos($tipoArchivo, "png") || strpos($tipoArchivo, "jpeg")) && ($tamanoArchivo < 5242880 )))
+                if($datos["datos"]["tipoEmpleado"] == "socio" || $datos["datos"]["tipoEmpleado"] == "mozo")
                 {
-                    echo json_encode(array("ERROR" => "La extensión o el tamaño del archivo no es correcta"));
+                    $controlador = new ComandaController();
+                    $archivo = $archivo["foto"];
+                    $tamanoArchivo = $archivo->getSize();
+                    $tipoArchivo = $archivo->getClientMediaType();
+                    $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
+                    if($comandaRetornada != false)
+                    {
+                        $nombreArchivo = $comandaRetornada->idMesa . "-" . $datos["id"];
+                        $rutaDestino = __DIR__ . "/../fotos/" . $nombreArchivo;
+                    
+                        if( !((strpos($tipoArchivo, "png") || strpos($tipoArchivo, "jpeg")) && ($tamanoArchivo < 5242880 )))
+                        {
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "La extensión o el tamaño del archivo no es correcta";
+                        }
+                        else
+                        {
+                            if(strpos($tipoArchivo, "png"))
+                            {
+                                $rutaDestino .= ".png";
+                            }
+                            else if(strpos($tipoArchivo, "jpeg"))
+                            {
+                                $rutaDestino .= ".jpg";
+                            }
+                    
+                            $archivo->moveTo($rutaDestino);
+                            $arrayRespuesta["status"] = "OK";
+                            $arrayRespuesta["message"] = "Foto subida con exito";
+                        }
+                    }
+                    else
+                    {
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "No existe una comanda con el id ingresado";
+                    }
                 }
                 else
                 {
-                    if(strpos($tipoArchivo, "png"))
-                    {
-                        $rutaDestino .= ".png";
-                    }
-                    else if(strpos($tipoArchivo, "jpeg"))
-                    {
-                        $rutaDestino .= ".jpg";
-                    }
-            
-                    $archivo->moveTo($rutaDestino);
-                    echo json_encode(array("OK" => "Foto subida con exito"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Debe ser mozo o socio para subir una foto de la comanda";  
                 }
+
             }
             else
             {
-                echo json_encode(array("ERROR" => "No existe una comanda con el id ingresado"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe subir una foto";  
             }
+        }
+        else
+        {
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
+        }
+        return $arrayRespuesta;
     }
-    else
+
+    static function bajaComanda($datos)
     {
-        echo json_encode(array("ERROR" => "Faltan datos necesarios para la subida de la foto. Se requiere foto e id"));
-    }
-}
-function bajaComanda($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] = "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -121,64 +143,56 @@ function bajaComanda($datos)
                 $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
                 if($comandaRetornada == false)
                 {
-                     echo json_encode(array("ERROR" => "La comanda no existe o ya esta concluida"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "La comanda no existe o ya esta concluida";
                 }
                 else
                 {
                     $retornoBaja = $controlador->bajaComanda($datos["id"]);
-                     if($retornoBaja)
-                     {
-                         $controladorMesa = new MesaController();
-                         //chequear que todas las comandas de una mesa esten concluidas antes de cambiar el estado de la mesa a disponible
-                         if(count($controlador->listarComandasPorMesa($comandaRetornada->idMesa)) == 0)
-                         {
-                            $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
-                         }
-                         echo json_encode(array("OK" => "Comanda concluida con exito"));
-                     }
-                     else
-                     {
-                        echo json_encode(array("ERROR" => "No se pudo concluir la comanda"));
-    
-                     }
+                    if($retornoBaja)
+                    {
+                        $controladorMesa = new MesaController();
+                        //chequear que todas las comandas de una mesa esten concluidas antes de cambiar el estado de la mesa a disponible
+                        if(count($controlador->listarComandasPorMesa($comandaRetornada->idMesa)) == 0)
+                        {
+                           $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
+                        }
+                        $arrayRespuesta["status"] = "OK";
+                        $arrayRespuesta["message"] = "Comanda concluida con exito";
+                    }
+                    else
+                    {
+                       $arrayRespuesta["status"] = "ERROR";
+                       $arrayRespuesta["message"] = "No se pudo concluir la comanda";
+                    }
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de baja una comanda"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser mozo o socio para dar de baja una comanda";
             }
-    
-    
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para la baja de la comanda. Se requiere id"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
-        
+        return $arrayRespuesta;
     }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-
-}
-
-function modificarComanda($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        
-        if(isset($datos["id"]))
-        {
     
+    static function modificarComanda($datos)
+    {
+        if(isset($datos["datos"]["tipoEmpleado"]))
+        {
             if($datos["datos"]["tipoEmpleado"] = "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
             {
                 $controlador = new ComandaController();
                $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
                if($comandaRetornada == false)
-               {
-                    echo json_encode(array("ERROR" => "La comanda no existe"));
+               {        
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "La comanda no existe";
                }
                else
                {
@@ -194,19 +208,19 @@ function modificarComanda($datos)
                         }
                         else
                         {
+                            $arrayRespuesta["status"] = "ERROR";
                             switch($retornoValidacion)
                             {
                                 case false:
-                                    echo json_encode(array("ERROR" => "El detalle debe estar compuesto por un producto existente"));
-                                    break;
+                                    $arrayRespuesta["message"] = "El detalle debe estar compuesto por un producto existente";
                                 case -1:
-                                    echo json_encode(array("ERROR" => "No se pueden pedir tragos porque no hay bartender"));
+                                    $arrayRespuesta["message"] = "No se pueden pedir tragos porque no hay bartender";
                                     break;
                                 case -2:
-                                    echo json_encode(array("ERROR" => "No se pueden pedir cervezas porque no hay cervecero"));
+                                    $arrayRespuesta["message"] = "No se pueden pedir cervezas porque no hay cervecero";
                                     break;
                                 case -3:
-                                    echo json_encode(array("ERROR" => "No se pueden pedir comidas ni postres porque no hay cocinero"));
+                                    $arrayRespuesta["message"] = "No se pueden pedir comidas ni postres porque no hay cocinero";
                                     break;
                             }
                         }
@@ -255,49 +269,49 @@ function modificarComanda($datos)
                             $retornoModificacion = $controlador->modificarComanda($datos["id"], $stringProductosNuevo, $idMesaModificado, $comandaRetornada->estado);      
                             if($retornoModificacion == false)
                             {
-                                echo json_encode(array("ERROR" => "El id de la mesa no corresponde a una mesa existente"));
+                                $arrayRespuesta["status"] = "ERROR";
+                                $arrayRespuesta["message"] = "El id de la mesa no corresponde a una mesa existente";
                             }
                             else
                             {
-                                echo json_encode(array("OK" => "Comanda modificada con exito"));
+                                $arrayRespuesta["status"] = "OK";
+                                $arrayRespuesta["message"] = "Comanda modificada con exito";
                             }
                         }
                         else
                         {
-                            echo json_encode(array("ERROR" => "No puede agregar productos a la comanda, solo modificar"));
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "No puede agregar productos a la comanda, solo modificar";
                         }
                     }
                     else
                     {
-                        echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
+                        $arrayRespuesta["status"] = "WARNING";
+                        $arrayRespuesta["message"] = "No se realizo ninguna modificacion";
                     }
                }
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser mozo o socio para modificar una comanda"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser mozo o socio para modificar una comanda";
             }
-              
+
+                  
+
         }
         else
         {
-            echo json_encode(array("ADVERTENCIA" => "Faltan datos necesarios para la modificacion de la comanda. Se requiere id para identificar la comanda a modificar"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function listadoComanda($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function listadoComanda($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        
-        if(isset($datos["parametro"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             $controladorComanda = new ComandaController();
             if($datos["parametro"] == "una")
@@ -305,20 +319,22 @@ function listadoComanda($datos)
                 if(isset($datos["id"]))
                 {
                     $comandaRetornada = $controladorComanda->buscarComandaPorId($datos["id"]);
-                    $arrayDetalle = explode(",", $comandaRetornada->detalle);
-                    $arrayEstado = explode(",", $comandaRetornada->detalle);
-                    $arrayIdProducto = explode(",", $comandaRetornada->idProducto);
-                    $arrayTiempos = explode(",", $comandaRetornada->tiempoEstimadoFinalizacion);
-    
+                    
                     if($comandaRetornada == false)
                     {
-                        echo json_encode(array("ERROR" => "No existe una comanda con ese ID"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "No existe una comanda con ese ID";
                     }
                     else
                     {
+                        $arrayDetalle = explode(",", $comandaRetornada->detalle);
+                        $arrayEstado = explode(",", $comandaRetornada->detalle);
+                        $arrayIdProducto = explode(",", $comandaRetornada->idProducto);
+                        $arrayTiempos = explode(",", $comandaRetornada->tiempoEstimadoFinalizacion);
                         $controladorProducto = new ProductoController();
     
                         $i = 0;
+                        $arrayListado = array();
                         foreach($arrayDetalle as $producto)
                         {
                             $tipoProducto = ($controladorProducto->buscarProductoPorNombre($producto))->tipo;
@@ -328,48 +344,59 @@ function listadoComanda($datos)
                                 case "cocinero":
                                     if($tipoProducto == "comida" || $tipoProducto == "postre")
                                     {
-                                        echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                        $arrayRespuesta["status"] = "OK";
+                                        $arrayRespuesta["message"] = "Listado realizado con exito";
+                                        array_push($arrayListado, $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda());
                                     }
                                     else
                                     {
-                                        echo json_encode(array("ADVERTENCIA" => "Un cocinero solo puede listar comidas y postres"));
+                                        $arrayRespuesta["status"] = "WARNING";
+                                        $arrayRespuesta["message"] = "Un cocinero solo puede listar comidas y postres";
                                     }
                                 break;
                                 case "bartender":
                                     if($tipoProducto == "trago")
                                     {
-                                        echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                        $arrayRespuesta["status"] = "OK";
+                                        $arrayRespuesta["message"] = "Listado realizado con exito";
+                                        array_push($arrayListado, $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda());
                                     }
                                     else
                                     {
-                                        echo json_encode(array("ADVERTENCIA" => "Un bartender solo puede listar tragos"));
+                                        $arrayRespuesta["status"] = "WARNING";
+                                        $arrayRespuesta["message"] = "Un bartender solo puede listar tragos";
         
                                     }
                                 break;
                                 case "cervecero":
                                     if($tipoProducto == "cerveza")
                                     {
-                                        echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                        $arrayRespuesta["status"] = "OK";
+                                        $arrayRespuesta["message"] = "Listado realizado con exito";
+                                        array_push($arrayListado, $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda());
                                     }
                                     else
                                     {
-                                        echo json_encode(array("ADVERTENCIA" => "Un cervecero solo puede listar cervezas"));
+                                        $arrayRespuesta["status"] = "WARNING";
+                                        $arrayRespuesta["message"] = "Un cervecero solo puede listar cervezas";
                                     }
                                 break;
                                 case "mozo":
                                 case "socio":
-                                    echo $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda();
+                                    $arrayRespuesta["status"] = "OK";
+                                    $arrayRespuesta["message"] = "Listado realizado con exito";
+                                    array_push($arrayListado, $controladorComanda->buscarProductoComanda($arrayIdProducto[$i])->mostrarProductoComanda());
                                 break;
                             }
-                            echo "\n";
                             $i++;
-                        }
-                        
+                        }  
+                        $arrayRespuesta["listado"] = $arrayListado;
                     }
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "Para listar una comanda se necesita el ID"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Para listar una comanda se necesita el ID";
                 }
             }
             else if($datos["parametro"] == "todas")
@@ -402,59 +429,58 @@ function listadoComanda($datos)
         
                         if($comandasRetornadas)
                         {
+                            $arrayListado = array();
                             foreach($comandasRetornadas as $comanda)
                             {
-                                echo $comanda->mostrarProductoComanda();
-                                echo "\n";
+                                array_push($arrayListado, $comanda->mostrarProductoComanda());
                             }
+                            $arrayRespuesta["status"] = "OK";
+                            $arrayRespuesta["message"] = "Listado realizado con exito";
+                            $arrayRespuesta["listado"] = $arrayListado;
+
                         }
                         else
                         {
-                            echo json_encode(array("ADVERTENCIA" => "No hay ninguna comanda del tipo y estado correspondiente"));
-        
+                            $arrayRespuesta["status"] = "ADVERTENCIA";
+                            $arrayRespuesta["message"] = "No hay ninguna comanda del tipo y estado correspondiente";
                         }
                     }
                     else
                     {
-                        echo json_encode(array("ERROR" => "El parametro estado debe ser 'pendiente', 'en preparacion' o 'listo para servir'"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "El parametro estado debe ser 'pendiente', 'en preparacion' o 'listo para servir'";
                     }
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "Si va a listar todas, debe ingresar el estado de las comandas a listar"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Si va a listar todas, debe ingresar el estado de las comandas a listar";
                 }
                 
             }
             else
             {
-                echo json_encode(array("ERROR" => "El 'parametro' debe ser 'una' o 'todas'"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "El 'parametro' debe ser 'una' o 'todas'";
             }
+            
+
         }
         else
         {
-            echo json_encode(array("ERROR" => "Error: faltan datos necesarios para el listado de las comandas. Se requiere parametro para listar una o todas"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function preparacionComanda($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function preparacionComanda($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["estado"]) && isset($datos["idProducto"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             $controladorComanda = new ComandaController();
-    
             //chequear si el idproducto existe
             $productoComandaRetornado = $controladorComanda->buscarProductoComanda($datos["idProducto"]);
-    
-    
-    
             if($productoComandaRetornado)
             {
                 if($datos["estado"] == "en preparacion" || $datos["estado"] == "listo para servir")
@@ -475,7 +501,8 @@ function preparacionComanda($datos)
                                 }
                                 else
                                 {
-                                    echo json_encode(array("ERROR" => "Un cocinero solo puede preparar comidas y postres"));
+                                    $arrayRespuesta["status"] = "ERROR";
+                                    $arrayRespuesta["message"] = "Un cocinero solo puede preparar comidas y postres";
                                 }
                             break;
                             case "bartender":
@@ -486,8 +513,8 @@ function preparacionComanda($datos)
                                 }
                                 else
                                 {
-                                    echo json_encode(array("ERROR" => "Un bartender solo puede preparar tragos"));
-            
+                                    $arrayRespuesta["status"] = "ERROR";
+                                    $arrayRespuesta["message"] = "Un bartender solo puede preparar tragos";
                                 }
                             break;
                             case "cervecero":
@@ -497,7 +524,8 @@ function preparacionComanda($datos)
                                 }
                                 else
                                 {
-                                    echo json_encode(array("ERROR" => "Un cervecero solo puede preparar cervezas"));
+                                    $arrayRespuesta["status"] = "ERROR";
+                                    $arrayRespuesta["message"] = "Un cervecero solo puede preparar cervezas";
                                 }
                             break;
                             case "mozo":
@@ -511,7 +539,8 @@ function preparacionComanda($datos)
                             $productoComandaRetornado->estado = $datos["estado"];
                             if($controladorComanda->PrepararProductoComanda($productoComandaRetornado))
                             {
-                                echo json_encode(array("OK" => "El estado de la comanda fue cambiado con exito"));
+                                $arrayRespuesta["status"] = "OK";
+                                $arrayRespuesta["message"] = "El estado de la comanda fue cambiado con exito";
                                 //creo que el mozo es quien debe cambiar el estado de la mesa, pero este codigo comentado lo hace automaticamente
                                 // $flagTodoListo = false;
                                 // $arrayIdProducto = explode(",", $comandaRetornada->idProducto);
@@ -537,46 +566,45 @@ function preparacionComanda($datos)
                             }
                             else
                             {
-                                echo json_encode(array("ERROR" => "Ocurrio un error al cambiar el estado de la comanda"));
+                                $arrayRespuesta["status"] = "ERROR";
+                                $arrayRespuesta["message"] = "Ocurrio un error al cambiar el estado de la comanda";
                             }
     
                         }
                     }
                     else
                     {
-                        echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion, el estado ya era '{$productoComandaRetornado->estado}"));
+                        $arrayRespuesta["status"] = "WARNING";
+                        $arrayRespuesta["message"] = "No se realizo ninguna modificacion, el estado ya era '{$productoComandaRetornado->estado}'";
                     }
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "El estado debe ser 'en preparacion' o 'listo para servir'"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El estado debe ser 'en preparacion' o 'listo para servir'";
                 }
                 
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "No existe un producto de comanda con ese ID"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "No existe un producto de comanda con ese ID";
             }
+
+
         }
         else
         {
-            echo json_encode(array("ERROR" => "Error: faltan datos necesarios para el listado de las comandas. Se requiere el id del producto de la comanda y estado"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n"; 
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+        return $arrayRespuesta;
     }
     
-}
-
-function cobrarComanda($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
+    static function cobrarComanda($datos)
     {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] = "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -584,7 +612,8 @@ function cobrarComanda($datos)
                 $comandaRetornada = $controlador->buscarComandaPorId($datos["id"]);
                 if($comandaRetornada == false)
                 {
-                     echo json_encode(array("ERROR" => "La comanda no existe"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "La comanda no existe";
                 }
                 else
                 {
@@ -592,43 +621,42 @@ function cobrarComanda($datos)
                     $retornoBaja = $controlador->bajaComanda($datos["id"]);
                      if($retornoBaja)
                      {
-                         $controladorMesa = new MesaController();
-                         $mesaRetornada = $controladorMesa->buscarMesaPorId($comandaRetornada->idMesa);
-                            //chequear que la mesa este en cliente pagando
-                            if($mesaRetornada->estado == "con cliente pagando")
-                            {
-                                $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
-                                echo json_encode(array("OK" => "Comanda cobrada con exito"));
-                            }
-                            else
-                            {
-                                echo json_encode(array("ERROR" => "El cliente no pidio la cuenta"));
-                            }
+                        $controladorMesa = new MesaController();
+                        $mesaRetornada = $controladorMesa->buscarMesaPorId($comandaRetornada->idMesa);
+                        //chequear que la mesa este en cliente pagando
+                        if($mesaRetornada->estado == "con cliente pagando")
+                        {
+                            $controladorMesa->modificarMesa($comandaRetornada->idMesa, "disponible");
+                            $arrayRespuesta["status"] = "OK";
+                            $arrayRespuesta["message"] = "Comanda cobrada con exito";
+                        }
+                        else
+                        {
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "El cliente no pidio la cuenta";
+                        }
                          
                      }
                      else
                      {
-                        echo json_encode(array("ERROR" => "No se pudo cobrar la comanda"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "No se pudo cobrar la comanda";
     
                      }
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser mozo o socio para cobrar una comanda"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser mozo o socio para cobrar una comanda";
             }
-    
-    
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para cobrar la comanda. Se requiere id"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+        return $arrayRespuesta;
     }
 }
 

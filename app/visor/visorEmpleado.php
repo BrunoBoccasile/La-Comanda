@@ -1,11 +1,11 @@
 <?php
 require_once __DIR__ . "/../controladores/empleadoController.php";
 
-function registroEmpleado($datos)
+class VisorEmpleado
 {
-    if(isset($datos["datos"]["tipoEmpleado"]))
+    static function registroEmpleado($datos)
     {
-        if( isset($datos["nombre"]) && isset($datos["apellido"]) && isset($datos["usuario"]) && isset($datos["clave"]) && isset($datos["tipo"]) )
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -14,87 +14,79 @@ function registroEmpleado($datos)
                    $controlador = new EmpleadoController();
                    if($controlador->buscarEmpleadoPorUsuario($datos["usuario"]) == false)
                    {
-                       $retornoInsertar = $controlador->insertarEmpleado($datos["nombre"], $datos["apellido"], $datos["usuario"], $datos["clave"], "activo", $datos["tipo"]);
-                       if($retornoInsertar != -1)
-                       {
-                           echo json_encode(array("OK" => "Se insertó el empleado con éxito con el ID: {$retornoInsertar}"));
-                       }
-                       else
-                       {
-                            echo json_encode(array("ERROR" => "No pueden haber mas de 3 socios"));
-                       }
+                        $retornoInsertar = $controlador->insertarEmpleado($datos["nombre"], $datos["apellido"], $datos["usuario"], password_hash($datos["clave"], PASSWORD_DEFAULT), "activo", $datos["tipo"]);
+                        if($retornoInsertar != -1)
+                        {
+                            $arrayRespuesta["status"] = "OK";
+                            $arrayRespuesta["message"] = "Se insertó el empleado con éxito con el ID: {$retornoInsertar}";
+                        }
+                        else
+                        {
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "No pueden haber mas de 3 socios";
+                        }
                    }
                    else
                    {
-                        echo json_encode(array("ERROR" => "El nombre de usuario ya esta en uso"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "El nombre de usuario ya esta en uso";
                    }
                 }
                 else
-                {
-                    echo json_encode(array("ERROR" => "Datos invalidos. Nombre, apellido, usuario y clave deben estar compuestos de 1 a 50 caracteres. El tipo debe ser socio, bartender, cervecero, cocinero o mozo"));
+                { 
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Datos invalidos. Nombre, apellido, usuario y clave deben estar compuestos de 1 a 50 caracteres. El tipo debe ser socio, bartender, cervecero, cocinero o mozo";
                 }
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para registrar un empleado"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para registrar un empleado";
             }
-            
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para el registro del empleado. Se requiere nombre, apellido, usuario, clave y tipo"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function loginEmpleado($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+        $arrayRespuesta = array("status" => "", "message" => "");
+        $controlador = new EmpleadoController();
+         $empleadoRetornado = $controlador->buscarEmpleadoPorUsuario($datos["usuarioLogin"]);
+        if($empleadoRetornado != false)
+        {
+            $hashRetornado = $controlador->obtenerClavePorUsuario($datos["usuarioLogin"]);
+
+            if(password_verify($datos["claveLogin"], $hashRetornado))
+            {
+                $arrayRespuesta["status"] = "OK";
+                $arrayRespuesta["message"] = "Sesion iniciada";
+                $arrayRespuesta["tipoEmpleado"] = $empleadoRetornado->tipo; ;
+            }
+            else
+            {   
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Clave incorrecta";
+            }
+
+        }
+        else
+        {
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "Usuario inexistente";
+        }
+        return $arrayRespuesta;
     }
-}
-
-function loginEmpleado($datos)
-{
-    $retorno = false;
-    if(isset($datos["usuarioLogin"]) && isset($datos["claveLogin"]))
+    
+    
+    static function bajaEmpleado($datos)
     {
-        
-           $controlador = new EmpleadoController();
-            $empleadoRetornado = $controlador->buscarEmpleadoPorUsuario($datos["usuarioLogin"]);
-           if($empleadoRetornado != false)
-           {
-               if($controlador->buscarEmpleadoPorUsuarioClave($datos["usuarioLogin"], $datos["claveLogin"]) == false)
-               {
-                    
-                   echo json_encode(array("ERROR" => "Clave incorrecta"));
-               }
-               else
-               {   
-                   echo json_encode(array("OK" => "Sesion iniciada"));
-                   $retorno = $empleadoRetornado->tipo;
-               }
-
-           }
-           else
-           {
-            echo json_encode(array("ERROR" => "Usuario inexistente"));
-           }
-        
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "faltan datos necesarios para el login. Se requiere usuarioLogin y claveLogin"));
-    }
-    echo "\n";
-    return $retorno;
-}
-
-
-function bajaEmpleado($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -102,39 +94,35 @@ function bajaEmpleado($datos)
                 $empleadoRetornado = $controlador->buscarEmpleadoPorId($datos["id"]);
                 if($empleadoRetornado == false)
                 {
-                    echo json_encode(array("ERROR" => "El empleado no existe o ya esta dado de baja"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El empleado no existe o ya esta dado de baja";
                 }
                 else
                 {
                     $controlador->bajaEmpleado($datos["id"]);
-                     echo json_encode(array("OK" => "Empleado borrado con exito (baja logica)"));
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Empleado borrado con exito (baja logica)";
                 }
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para dar de baja un empleado"));
-            }
-    
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para dar de baja un empleado";
+            } 
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para la baja del empleado. Se requiere id"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    
+    static function modificarEmpleado($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-
-function modificarEmpleado($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -143,143 +131,150 @@ function modificarEmpleado($datos)
                 $empleadoRetornado = $controlador->buscarEmpleadoPorId($datos["id"]);
                 if($empleadoRetornado == false)
                 {
-                     echo json_encode(array("ERROR" => "El empleado no existe"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El empleado no existe";
                 }
                 else
                 {
-                     $nombreModificado = $empleadoRetornado->nombre;
-                     $apellidoModificado = $empleadoRetornado->apellido;
-                     $usuarioModificado = $empleadoRetornado->usuario;
-                     $claveModificada = $empleadoRetornado->clave;
-                     $tipoModificado = $empleadoRetornado->tipo;
-                     $flagModificacion = false;
-                     if(isset($datos["nombre"]) && $datos["nombre"] != $nombreModificado)
-                     {
-                         $nombreModificado = $datos["nombre"];
-                         $flagModificacion = true;
-                     }
-                     if(isset($datos["apellido"]) && $datos["apellido"] != $apellidoModificado)
-                     {
-                         $apellidoModificado = $datos["apellido"];
-                         $flagModificacion = true;
-                     }
-                     if(isset($datos["usuario"]) && $datos["usuario"] != $usuarioModificado)
-                     {
-                         $existeEmpleado = $controlador->buscarEmpleadoPorUsuario($datos["usuario"]);
-                         if($existeEmpleado == false)
-                         {
-                             $usuarioModificado = $datos["usuario"];
-                             $flagModificacion = true;
-                         }
-                         else
-                         {
-                             echo json_encode(array("ADVERTENCIA" => "El nombre de usuario ya esta en uso, se deja el original"));
-                         }
-                     }
-                     if(isset($datos["clave"]) && $datos["clave"] != $claveModificada)
-                     {
-                         $claveModificada = $datos["clave"];
-                         $flagModificacion = true;
-                     }
-                     if(isset($datos["tipo"]) && $datos["tipo"] != $tipoModificado)
-                     {
-                         if($datos["tipo"] == "socio" || $datos["tipo"] == "bartender" || $datos["tipo"] == "cervecero" || $datos["tipo"] == "cocinero" || $datos["tipo"] == "mozo")
-                         {
-                             $tipoModificado = $datos["tipo"];
-                             $flagModificacion = true;
-                         }
-                         else
-                         {
-                             echo json_encode(array("ERROR" => "El tipo es invalido. Se espera socio, bartender, cervecero, cocinero o mozo"));
-                         }
-                     }
-                     if($flagModificacion)
-                     {
-                         $controlador->modificarEmpleado($empleadoRetornado->id, $nombreModificado, $apellidoModificado, $usuarioModificado, $claveModificada, $empleadoRetornado->estado, $tipoModificado);      
-                         echo json_encode(array("OK" => "Empleado modificado con exito"));
-                     }
-                     else
-                     {
-                         echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
-                     }
+                    $nombreModificado = $empleadoRetornado->nombre;
+                    $apellidoModificado = $empleadoRetornado->apellido;
+                    $usuarioModificado = $empleadoRetornado->usuario;
+                    $claveModificada = $empleadoRetornado->clave;
+                    $tipoModificado = $empleadoRetornado->tipo;
+                    $flagModificacion = false;
+                    if(isset($datos["nombre"]) && $datos["nombre"] != $nombreModificado)
+                    {
+                        $nombreModificado = $datos["nombre"];
+                        $flagModificacion = true;
+                    }
+                    if(isset($datos["apellido"]) && $datos["apellido"] != $apellidoModificado)
+                    {
+                        $apellidoModificado = $datos["apellido"];
+                        $flagModificacion = true;
+                    }
+                    if(isset($datos["usuario"]) && $datos["usuario"] != $usuarioModificado)
+                    {
+                        $existeEmpleado = $controlador->buscarEmpleadoPorUsuario($datos["usuario"]);
+                        if($existeEmpleado == false)
+                        {
+                            $usuarioModificado = $datos["usuario"];
+                            $flagModificacion = true;
+                        }
+                        else
+                        {
+                            $arrayRespuesta["status"] = "WARNING";
+                            $arrayRespuesta["message"] = "El nombre de usuario ya esta en uso, se deja el original";
+                        }
+                    }
+                    if(isset($datos["clave"]) && !password_verify($datos["clave"], $claveModificada))
+                    {
+                        $claveModificada = password_hash($datos["clave"], PASSWORD_DEFAULT);
+                        $flagModificacion = true;
+                    }
+                    if(isset($datos["tipo"]) && $datos["tipo"] != $tipoModificado)
+                    {
+                        if($datos["tipo"] == "socio" || $datos["tipo"] == "bartender" || $datos["tipo"] == "cervecero" || $datos["tipo"] == "cocinero" || $datos["tipo"] == "mozo")
+                        {
+                            $tipoModificado = $datos["tipo"];
+                            $flagModificacion = true;
+                        }
+                        else
+                        {
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "El tipo es invalido. Se espera socio, bartender, cervecero, cocinero o mozo";
+                        }
+                    }
+                    if($flagModificacion)
+                    {
+                        $controlador->modificarEmpleado($empleadoRetornado->id, $nombreModificado, $apellidoModificado, $usuarioModificado, $claveModificada, $empleadoRetornado->estado, $tipoModificado);      
+                        $arrayRespuesta["status"] = "OK";
+                        $arrayRespuesta["message"] = "Empleado modificado con exito";
+                    }
+                    else
+                    {
+                        $arrayRespuesta["status"] = "WARNING";
+                        $arrayRespuesta["message"] = "No se realizo ninguna modificacion";
+                    }
                 }
                
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para modificar un empleado"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para modificar un empleado";
             }
-    
+
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para la modificacion del empleado. Se requiere id para identificar al usuario a modificar"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function listadoEmpleado($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function listadoEmpleado($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["parametro"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
-            if($datos["datos"]["tipoEmpleado"] == "socio")
-            {
-                $controladorEmpleado = new EmpleadoController();
-                if($datos["parametro"] == "uno")
+                if($datos["datos"]["tipoEmpleado"] == "socio")
                 {
-                    if(isset($datos["id"]))
+                    $controladorEmpleado = new EmpleadoController();
+                    if($datos["parametro"] == "uno")
                     {
-                        $empleadoRetornado = $controladorEmpleado->buscarEmpleadoPorId($datos["id"]);
-                        if($empleadoRetornado == false)
+                        if(isset($datos["id"]))
                         {
-                            echo json_encode(array("ERROR" => "No existe un empleado con ese ID"));
+                            $empleadoRetornado = $controladorEmpleado->buscarEmpleadoPorId($datos["id"]);
+                            if($empleadoRetornado == false)
+                            {
+                                $arrayRespuesta["status"] = "ERROR";
+                                $arrayRespuesta["message"] = "No existe un empleado con ese ID";
+                            }
+                            else
+                            {
+                                $arrayRespuesta["status"] = "OK";
+                                $arrayRespuesta["message"] = "Listado realizado con exito";
+                                $arrayRespuesta["listado"] = $empleadoRetornado->mostrarDatos();
+                            }
                         }
                         else
                         {
-                            echo $empleadoRetornado->mostrarDatos();
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "Para listar un empleado se necesita el ID";
                         }
+                    }
+                    else if($datos["parametro"] == "todos")
+                    {
+                        $empleadosRetornados = $controladorEmpleado->listarEmpleados();
+                        $arrayListado = array();
+                        foreach($empleadosRetornados as $empleado)
+                        {
+                            array_push($arrayListado, $empleado->mostrarDatos());
+                        }
+                        $arrayRespuesta["status"] = "OK";
+                        $arrayRespuesta["message"] = "Listado realizado con exito";
+                        $arrayRespuesta["listado"] = $arrayListado;
                     }
                     else
                     {
-                        echo json_encode(array("ERROR" => "Para listar un empleado se necesita el ID"));
+                        $arrayRespuesta["status"] = "ERROR";
+                        $arrayRespuesta["message"] = "El 'parametro' debe ser 'uno' o 'todos'";
+            
                     }
-                }
-                else if($datos["parametro"] == "todos")
-                {
-                    $empleadosRetornados = $controladorEmpleado->listarEmpleados();
-                    foreach($empleadosRetornados as $empleado)
-                    {
-                        echo $empleado->mostrarDatos() . "\n";
-                    }
+        
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "El 'parametro' debe ser 'uno' o 'todos'"));
-        
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Debe ser socio para listar empleados";
                 }
-    
-            }
-            else
-            {
-                echo json_encode(array("ERROR" => "Debe ser socio para listar empleados"));
-            }
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para el listado de empleado. Se requiere parametro para listar uno o todos"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+        return $arrayRespuesta;
     }
 }
 ?>

@@ -29,18 +29,9 @@ class ClienteController {
         return $cliente->ModificarClienteParametros();
     }
 
-    
-    public function listarEmpleados() {
-        return Empleado::TraerTodosLosEmpleados();
-    }
-    
-    public function listarEmpleadosPorTipo($tipo)
+    public function obtenerClavePorUsuario($usuario)
     {
-        return Empleado::TraerTodosLosEmpleadosPorTipo($tipo);
-    }
-    
-    public function listarEmpleadosJson() {
-        return json_encode(Empleado::TraerTodosLosEmpleados(), JSON_PRETTY_PRINT);
+        return Cliente::TraerClavePorUsuario($usuario);
     }
     
 
@@ -49,20 +40,9 @@ class ClienteController {
        return $retorno;
     }
 
-
-    public function buscarClientePorUsuarioClave($usuario, $clave) {
-        $retorno = Cliente::TraerUnClientePorUsuarioClave($usuario, $clave);
-        return $retorno;
-    }
-
-    public function obtenerIdDeClienteLogeado($usuario, $clave)
-    {
-        $cliente = Cliente::TraerUnClientePorUsuarioClave($usuario, $clave);
-        return $cliente->id;
-    }
-
     public function buscarClientePorId($id) {
         $retorno = Cliente::TraerUnCliente($id);
         return $retorno;
     }
+
 }

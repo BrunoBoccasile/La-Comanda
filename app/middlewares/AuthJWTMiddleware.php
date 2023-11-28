@@ -22,19 +22,16 @@ class AuthJWTMiddleware
             }
 
             $header = $request->getHeaderLine('Authorization');
-    
             if (empty($header)) {
                 throw new Exception();
             }
-    
+            
             $token = trim(explode("Bearer", $header)[1]);
-    
             AutentificadorJWT::VerificarToken($token);
-    
             $response = $handler->handle($request);
         } catch (Exception $e) {
             $response = new Response();
-            $payload = json_encode(array('ERROR' => "Hubo un error con el token"));
+            $payload = json_encode(array('status' => "ERROR", 'message' => "Hubo un error con el token"));
             $response->getBody()->write($payload);
         }
         return $response->withHeader('Content-Type', 'application/json');
@@ -50,7 +47,7 @@ class AuthJWTMiddleware
             $response = $handler->handle($request);
         } catch (Exception $e) {
             $response = new Response();
-            $payload = json_encode(array('mensaje' => 'ERROR: Hubo un error con el TOKEN'));
+            $payload = json_encode(array('status' => "ERROR", 'message' => "Hubo un error con el token"));
             $response->getBody()->write($payload);
         }
         return $response->withHeader('Content-Type', 'application/json');

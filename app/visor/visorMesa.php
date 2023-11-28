@@ -2,11 +2,11 @@
 require_once __DIR__ . "/../controladores/mesaController.php";
 require_once __DIR__ . "/../controladores/comandaController.php";
 
-function altaMesa($datos)
+class VisorMesa
 {
-    if(isset($datos["datos"]["tipoEmpleado"]))
+    static function altaMesa($datos)
     {
-        if(isset($datos["estado"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -14,74 +14,69 @@ function altaMesa($datos)
                 {
                     $controlador = new MesaController();
                     $retornoInsertar = $controlador->insertarMesa($datos["estado"]);
-                    echo json_encode(array("OK" => "Se insertó la mesa con éxito con el ID: {$retornoInsertar}"));
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Se insertó la mesa con éxito con el ID: {$retornoInsertar}";
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "Datos invalidos. El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Datos invalidos. El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'";
                 }
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser mozo o socio para dar de alta una mesa"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser mozo o socio para dar de alta una mesa";
             }
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para el alta de la mesa. Se requiere estado"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function cierreMesa($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function cierreMesa($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
+            
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
                 $controlador = new MesaController();
                 $mesaRetornada = $controlador->buscarMesaPorId($datos["id"]);
                 if($mesaRetornada == false)
                 {
-                     echo json_encode(array("ERROR" => "La mesa no existe o ya esta cerrada"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "La mesa no existe o ya esta cerrada";
                 }
                 else
                 {
                     $controlador->modificarMesa($mesaRetornada->id, "cerrada");
-                    echo json_encode(array("OK" => "Mesa cerrada con exito"));
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Mesa cerrada con exito";
                 }
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para cerrar una mesa"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para cerrar una mesa";
             }
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para el cierre de la mesa. Se requiere id"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function modificarMesa($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function modificarMesa($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "mozo" || $datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -89,7 +84,8 @@ function modificarMesa($datos)
                 $mesaRetornada = $controlador->buscarMesaPorId($datos["id"]);
                 if($mesaRetornada == false)
                 {
-                    echo json_encode(array("ERROR" => "La mesa no existe"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "La mesa no existe";
                 }
                    else
                    {
@@ -104,115 +100,120 @@ function modificarMesa($datos)
                             }
                             else
                             {
-                                echo json_encode(array("ERROR" => "El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'"));
-                                echo "\n";
+                                $arrayRespuesta["status"] = "ERROR";
+                                $arrayRespuesta["message"] = "El estado deberia ser 'con cliente esperando pedido', 'con cliente comiendo', 'con cliente pagando' o 'disponible'";
                             }
                         }
                         if($flagModificacion)
                         {
                             $controlador->modificarMesa($mesaRetornada->id, $estadoModificado);  
-                            echo json_encode(array("OK" => "Mesa modificada con exito"));
+                            $arrayRespuesta["status"] = "OK";
+                            $arrayRespuesta["message"] = "Mesa modificada con exito";
                         }
                         else
                         {
-                            echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "No se realizo ninguna modificacion";
                         }
                    }
     
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser mozo o socio para modificar una mesa"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser mozo o socio para modificar una mesa";
             }
             
-    
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para la modificacion de la mesa. Se requiere id para identificar la mesa a modificar"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
-        echo "\n";
+        return $arrayRespuesta;
     }
-    else
+    
+    static function listadoMesa($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function listadoMesa($datos)
-{
-        if(isset($datos["parametro"]))
+        
+        $controladorMesa = new MesaController();
+        if($datos["parametro"] == "una")
         {
-            $controladorMesa = new MesaController();
-            if($datos["parametro"] == "una")
+            if(isset($datos["id"]))
             {
-                if(isset($datos["id"]))
+                $mesaRetornada = $controladorMesa->buscarMesaPorId($datos["id"]);
+                if($mesaRetornada == false)
                 {
-                    $mesaRetornada = $controladorMesa->buscarMesaPorId($datos["id"]);
-                    if($mesaRetornada == false)
-                    {
-                        echo json_encode(array("ERROR" => "No existe una mesa con ese ID"));
-                    }
-                    else
-                    {
-                        echo $mesaRetornada->mostrarDatos();
-                    }
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "No existe una mesa con ese ID";
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "Para listar una mesa se necesita el ID"));
-                }
-            }
-            else if($datos["parametro"] == "todas")
-            {
-                $mesasRetornadas = $controladorMesa->listarMesas();
-                foreach($mesasRetornadas as $mesa)
-                {
-                    echo $mesa->mostrarDatos() . "\n";
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Listado realizado con exito";
+                    $arrayRespuesta["listado"] = $mesaRetornada->mostrarDatos();
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "El 'parametro' debe ser 'una' o 'todas'"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Para listar una mesa se necesita el ID";
             }
         }
-        else
+        else if($datos["parametro"] == "todas")
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para el listado de las mesas. Se requiere parametro para listar una o todas"));
-        }
-        echo "\n";
-    
-}
-
-function listarMesaMasUsada($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if($datos["datos"]["tipoEmpleado"] == "socio")
-        {
-            $controladorComanda = new ComandaController();
-    
-            $comandasRetornadas = $controladorComanda->listarComandasHistoricas();
-            $arrayMesasUsadas = array();
-            foreach($comandasRetornadas as $comanda)
+            $mesasRetornadas = $controladorMesa->listarMesas();
+            $arrayListado = array();
+            foreach($mesasRetornadas as $mesa)
             {
-                array_push($arrayMesasUsadas, $comanda->idMesa);
+                array_push($arrayListado, $mesa->mostrarDatos());
             }
-            $conteoMesas = array_count_values($arrayMesasUsadas);
-            $mesaMasUsada = array_search(max($conteoMesas), $conteoMesas);
-            echo json_encode(array("OK" => "La mesa mas usada es la mesa " . $mesaMasUsada . ", con un historial de ". $conteoMesas[$mesaMasUsada] ." pedidos."));
+            $arrayRespuesta["status"] = "OK";
+            $arrayRespuesta["message"] = "Listado realizado con exito";
+            $arrayRespuesta["listado"] = $arrayListado;
         }
         else
         {
-            echo json_encode(array("ERROR" => "Debe ser socio para listar la mesa mas usada"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El 'parametro' debe ser 'una' o 'todas'";
         }
+            return $arrayRespuesta;
     }
-    else
+    
+    static function listarMesaMasUsada($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
+        if(isset($datos["datos"]["tipoEmpleado"]))
+        {
+            if($datos["datos"]["tipoEmpleado"] == "socio")
+            {
+                $controladorComanda = new ComandaController();
+        
+                $comandasRetornadas = $controladorComanda->listarComandasHistoricas();
+                $arrayMesasUsadas = array();
+                foreach($comandasRetornadas as $comanda)
+                {
+                    array_push($arrayMesasUsadas, $comanda->idMesa);
+                }
+                $conteoMesas = array_count_values($arrayMesasUsadas);
+                $mesaMasUsada = array_search(max($conteoMesas), $conteoMesas);
+                $arrayRespuesta["status"] = "OK";
+                $arrayRespuesta["message"] = "La mesa mas usada es la mesa " . $mesaMasUsada . ", con un historial de ". $conteoMesas[$mesaMasUsada] ." pedidos.";
+            }
+            else
+            {
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para listar la mesa mas usada";
+            }
+        }
+        else
+        {
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
+        }
+        return $arrayRespuesta;
     }
+    
 }
-
 function compararPorUsos($a, $b) {
     $sumaA = $a->puntosRestaurante + $a->puntosCocinero + $a->puntosMozo + $a->puntosMesa;
     $sumaB = $b->puntosRestaurante + $b->puntosCocinero + $b->puntosMozo + $b->puntosMesa;

@@ -7,7 +7,7 @@ class Mesa
 
     public function mostrarDatos()
     {
-        return json_encode(array("ID" => $this->id, "ESTADO" => $this->estado));
+        return array("id" => $this->id, "estado" => $this->estado);
     }
 
     public static function ValidarDatos($estado)

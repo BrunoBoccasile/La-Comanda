@@ -9,10 +9,12 @@ class Empleado
     public $clave;
     public $estado;//activo/suspendido/borrado
     public $tipo; //socio/bartender/cervecero/cocinero/mozo
+    public $fechaAlta;
+    public $fechaBaja;
 
     public function mostrarDatos()
     {
-        return json_encode(array("ID" => $this->id, "NOMBRE" => $this->nombre, "APELLIDO" => $this->apellido, "USUARIO" => $this->usuario, "CLAVE" => $this->clave, "ESTADO" => $this->estado, "TIPO" => $this->tipo));
+        return array("id" => $this->id, "nombre" => $this->nombre, "apellido" => $this->apellido, "usuario" => $this->usuario, "clave" => $this->clave, "estado" => $this->estado, "tipo" => $this->tipo, "fechaAlta" => $this->fechaAlta, "fechaBaja" => $this->fechaBaja);
     }
 
     public static function ValidarDatos($nombre, $apellido, $usuario, $clave, $tipo)
@@ -34,13 +36,15 @@ class Empleado
     public function InsertarElEmpleadoParametros()
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("INSERT into empleados (nombre,apellido,usuario,clave,estado,tipo)values(:nombre,:apellido,:usuario,:clave,:estado,:tipo)");
+        $consulta = $objetoAccesoDato->RetornarConsulta("INSERT into empleados (nombre,apellido,usuario,clave,estado,tipo,fecha_alta,fecha_baja)values(:nombre,:apellido,:usuario,:clave,:estado,:tipo,:fechaAlta,:fechaBaja)");
         $consulta->bindValue(':nombre', $this->nombre, PDO::PARAM_INT);
         $consulta->bindValue(':apellido', $this->apellido, PDO::PARAM_STR);
         $consulta->bindValue(':usuario', $this->usuario, PDO::PARAM_STR);
         $consulta->bindValue(':clave', $this->clave, PDO::PARAM_STR);
         $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
         $consulta->bindValue(':tipo', $this->tipo, PDO::PARAM_STR);
+        $consulta->bindValue(':fechaAlta', $this->fechaAlta, PDO::PARAM_STR);
+        $consulta->bindValue(':fechaBaja', $this->fechaBaja, PDO::PARAM_STR);
         $consulta->execute();
         return $objetoAccesoDato->RetornarUltimoIdInsertado();
     }
@@ -48,7 +52,7 @@ class Empleado
     public static function TraerTodosLosEmpleados()
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select id, nombre,apellido,usuario,clave,estado,tipo from empleados where estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select id, nombre,apellido,usuario,clave,estado,tipo,fecha_alta as fechaAlta,fecha_baja as fechaBaja from empleados where estado != 'borrado'");
         $consulta->execute();
         return $consulta->fetchAll(PDO::FETCH_CLASS, "empleado");
     }
@@ -56,7 +60,7 @@ class Empleado
     public static function TraerTodosLosEmpleadosPorTipo($tipo)
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select id, nombre,apellido,usuario,clave,estado,tipo from empleados where tipo = '$tipo' and estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select id, nombre,apellido,usuario,clave,estado,tipo,fecha_alta as fechaAlta,fecha_baja as fechaBaja from empleados where tipo = '$tipo' and estado != 'borrado'");
         $consulta->execute();
         return $consulta->fetchAll(PDO::FETCH_CLASS, "empleado");
     }
@@ -64,7 +68,7 @@ class Empleado
     public static function TraerUnEmpleado($id)
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select id,nombre as nombre, apellido as apellido,usuario as usuario, clave as clave, estado as estado, tipo as tipo from empleados where id = $id and estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select id,nombre as nombre, apellido as apellido,usuario as usuario, clave as clave, estado as estado, tipo as tipo,fecha_alta as fechaAlta,fecha_baja as fechaBaja from empleados where id = $id and estado != 'borrado'");
         $consulta->execute();
         $empleadoBuscado = $consulta->fetchObject('empleado');
         return $empleadoBuscado;
@@ -73,7 +77,7 @@ class Empleado
     public static function TraerUnEmpleadoPorUsuario($usuario)
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select usuario as usuario,nombre as nombre, apellido as apellido, clave as clave, estado as estado, tipo as tipo from empleados where usuario = :usuario and estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select id,usuario,nombre,apellido,clave,estado,tipo,fecha_alta as fechaAlta,fecha_baja as fechaBaja from empleados where usuario = :usuario");
         $consulta->bindValue(':usuario', $usuario, PDO::PARAM_STR);
         $consulta->execute();   
         $empleadoBuscado = $consulta->fetchObject('empleado');
@@ -81,16 +85,14 @@ class Empleado
     }
 
 
-
-    public static function TraerUnEmpleadoPorUsuarioClave($usuario, $clave)
+    public static function TraerClavePorUsuario($usuario)
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select usuario as usuario, nombre as nombre, apellido as apellido, clave as clave, estado as estado, tipo as tipo from empleados where usuario = :usuario and clave = :clave and estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select clave from empleados where usuario = :usuario and estado != 'borrado'");
         $consulta->bindValue(':usuario', $usuario, PDO::PARAM_STR);
-        $consulta->bindValue(':clave', $clave, PDO::PARAM_STR);
-        $consulta->execute();   
-        $empleadoBuscado = $consulta->fetchObject('empleado');
-        return $empleadoBuscado;
+        $consulta->execute();
+        $claveBuscada = $consulta->fetch(PDO::FETCH_COLUMN);
+        return $claveBuscada;
     }
 
     public function ModificarEmpleadoParametros()
@@ -103,7 +105,8 @@ class Empleado
 				usuario=:usuario,
                 clave=:clave,
                 estado=:estado,
-                tipo=:tipo
+                tipo=:tipo,
+                fecha_baja=:fechaBaja
 				WHERE id=:id");
         $consulta->bindValue(':id', $this->id, PDO::PARAM_INT);
         $consulta->bindValue(':nombre', $this->nombre, PDO::PARAM_STR);
@@ -112,6 +115,7 @@ class Empleado
         $consulta->bindValue(':clave', $this->clave, PDO::PARAM_STR);
         $consulta->bindValue(':estado', $this->estado, PDO::PARAM_STR);
         $consulta->bindValue(':tipo', $this->tipo, PDO::PARAM_STR);
+        $consulta->bindValue(':fechaBaja', $this->fechaBaja, PDO::PARAM_STR);
         return $consulta->execute();
     }
 }

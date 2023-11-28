@@ -1,11 +1,11 @@
 <?php
 require_once __DIR__ . "/../controladores/productoController.php";
 
-function altaProducto($datos)
+class VisorProducto
 {
-    if(isset($datos["datos"]["tipoEmpleado"]))
+    static function altaProducto($datos)
     {
-        if(isset($datos["nombre"]) && isset($datos["tipo"]) && isset($datos["precio"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -15,77 +15,74 @@ function altaProducto($datos)
                    if($controlador->buscarProductoPorNombre($datos["nombre"]) == false)
                    {
                        $retornoInsertar = $controlador->insertarProducto(strtolower($datos["nombre"]), strtolower($datos["tipo"]), $datos["precio"], "activo");
-                       echo json_encode(array("OK" => "Se insertó el producto con éxito con el ID: {$retornoInsertar}"));
+                       $arrayRespuesta["status"] = "OK";
+                       $arrayRespuesta["message"] = "Se insertó el producto con éxito con el ID: {$retornoInsertar}";
                    }
                    else
                    {
-                        echo json_encode(array("ERROR" => "El producto ya existe"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El producto ya existe";
                    }
                 }
                 else
                 {
-                    echo json_encode(array("ERROR" => "Datos invalidos. Nombre y tipo producto deben estar compuestos de 1 a 50 caracteres. El tipo debe ser trago, cerveza, comida o postre. El precio debe ser positivo y de hasta 7 cifras"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "Datos invalidos. Nombre y tipo producto deben estar compuestos de 1 a 50 caracteres. El tipo debe ser trago, cerveza, comida o postre. El precio debe ser positivo y de hasta 7 cifras";
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para dar de alta un producto"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para dar de alta un producto";
             }
+            
         }
         else
         {
-            echo json_encode(array("ERROR" => "faltan datos necesarios para el alta del producto. Se requiere nombre, tipo y precio"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
+        return $arrayRespuesta;
     }
-    else
+    
+    static function bajaProducto($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function bajaProducto($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
+            
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
                 $controlador = new ProductoController();
                 $productoRetornado = $controlador->buscarProductoPorId($datos["id"]);
                 if($productoRetornado == false)
                 {
-                    echo json_encode(array("ERROR" => "El producto no existe o ya esta dado de baja"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El producto no existe o ya esta dado de baja";
                 }
                 else
                 {
                     $controlador->modificarProducto($productoRetornado->id, strtolower($productoRetornado->nombre), strtolower($productoRetornado->tipo), $productoRetornado->precio, "borrado");
-                    echo json_encode(array("OK" => "Producto borrado con exito (baja logica)"));
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Producto borrado con exito (baja logica)";
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para dar de baja un producto"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para dar de baja un producto";
             }
-               
-    
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para la baja del producto. Se requiere id"));        
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
+        return $arrayRespuesta;
     }
-    else
+    
+    static function modificarProducto($datos)
     {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function modificarProducto($datos)
-{
-    if(isset($datos["datos"]["tipoEmpleado"]))
-    {
-        if(isset($datos["id"]))
+        if(isset($datos["datos"]["tipoEmpleado"]))
         {
             if($datos["datos"]["tipoEmpleado"] == "socio")
             {
@@ -93,7 +90,8 @@ function modificarProducto($datos)
                 $productoRetornado = $controlador->buscarProductoPorId($datos["id"]);
                 if($productoRetornado == false)
                 {
-                     echo json_encode(array("ERROR" => "El producto no existe"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "El producto no existe";
                 }
                 else
                 {
@@ -103,20 +101,21 @@ function modificarProducto($datos)
                      $flagModificacion = false;
                      if(isset($datos["nombre"]) && $datos["nombre"] != $nombreModificado)
                      {
-                         if($controlador->buscarProductoPorNombre($datos["nombre"]) == false)
-                         {
-                             $nombreModificado = $datos["nombre"];
-                             $flagModificacion = true;
-                         }
-                         else
-                         {
-                             echo json_encode(array("ADVERTENCIA" => "El nombre del producto ya esta en uso, se deja el original"));
-                         }
-                     }
+                        if($controlador->buscarProductoPorNombre($datos["nombre"]) == false)
+                        {
+                            $nombreModificado = $datos["nombre"];
+                            $flagModificacion = true;
+                        }
+                        else
+                        {
+                            $arrayRespuesta["status"] = "WARNING";
+                            $arrayRespuesta["message"] = "El nombre del producto ya esta en uso, se deja el original";
+                        }
+                    }
                      if(isset($datos["precio"]) && $datos["precio"] != $precioModificado)
                      {
-                         $precioModificado = $datos["precio"];
-                         $flagModificacion = true;
+                        $precioModificado = $datos["precio"];
+                        $flagModificacion = true;
                      }
                      if(isset($datos["tipo"]) && $datos["tipo"] != $tipoModificado)
                      {
@@ -127,42 +126,39 @@ function modificarProducto($datos)
                          }
                          else
                          {
-                             echo json_encode(array("ERROR" => "El tipo es invalido. Se espera trago, cerveza, comida o postre"));
+                            $arrayRespuesta["status"] = "ERROR";
+                            $arrayRespuesta["message"] = "El tipo es invalido. Se espera trago, cerveza, comida o postre";
                          }
                      }
                      if($flagModificacion)
                      {
-                         $controlador->modificarProducto($productoRetornado->id, strtolower($nombreModificado), strtolower($tipoModificado), $precioModificado, $productoRetornado->estado);      
-                         echo json_encode(array("OK" => "Producto modificado con exito"));
+                        $controlador->modificarProducto($productoRetornado->id, strtolower($nombreModificado), strtolower($tipoModificado), $precioModificado, $productoRetornado->estado);      
+                        $arrayRespuesta["status"] = "OK";
+                        $arrayRespuesta["message"] = "Producto modificado con exito";
      
                      }
                      else
-                     {
-                         echo json_encode(array("ADVERTENCIA" => "No se realizo ninguna modificacion"));
+                    {
+                        $arrayRespuesta["status"] = "WARNING";
+                        $arrayRespuesta["message"] = "No se realizo ninguna modificacion";
                      }
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Debe ser socio para dar de baja un producto"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Debe ser socio para modificar un producto";
             }
-               
-    
         }
         else
         {
-            echo json_encode(array("ERROR" => "Faltan datos necesarios para la modificacion del producto. Se requiere id para identificar el producto a modificar"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El JWT debe corresponder a un empleado";
         }
+        return $arrayRespuesta;
     }
-    else
-    {
-        echo json_encode(array("ERROR" => "El JWT debe corresponder a un empleado"));  
-    }
-}
-
-function listadoProducto($datos)
-{
-    if(isset($datos["parametro"]))
+    
+    static function listadoProducto($datos)
     {
         $controladorProducto = new ProductoController();
         if($datos["parametro"] == "uno")
@@ -172,34 +168,40 @@ function listadoProducto($datos)
                 $productoRetornado = $controladorProducto->buscarProductoPorId($datos["id"]);
                 if($productoRetornado == false)
                 {
-                    echo json_encode(array("ERROR" => "No existe un producto con ese ID"));
+                    $arrayRespuesta["status"] = "ERROR";
+                    $arrayRespuesta["message"] = "No existe un producto con ese ID";
                 }
                 else
                 {
-                    echo $productoRetornado->mostrarDatos();
+                    $arrayRespuesta["status"] = "OK";
+                    $arrayRespuesta["message"] = "Listado realizado con exito";
+                    $arrayRespuesta["listado"] = $productoRetornado->mostrarDatos();
                 }
             }
             else
             {
-                echo json_encode(array("ERROR" => "Para listar un producto se necesita el ID"));
+                $arrayRespuesta["status"] = "ERROR";
+                $arrayRespuesta["message"] = "Para listar un producto se necesita el ID";
             }
         }
         else if($datos["parametro"] == "todos")
         {
             $productosRetornados = $controladorProducto->listarProductos();
+            $arrayListado = array();
             foreach($productosRetornados as $producto)
             {
-                echo $producto->mostrarDatos() . "\n";
+                array_push($arrayListado, $producto->mostrarDatos());
             }
+            $arrayRespuesta["status"] = "OK";
+            $arrayRespuesta["message"] = "Listado realizado con exito";
+            $arrayRespuesta["listado"] = $arrayListado;
         }
         else
         {
-            echo json_encode(array("ERROR" => "El 'parametro' debe ser 'uno' o 'todos'"));
+            $arrayRespuesta["status"] = "ERROR";
+            $arrayRespuesta["message"] = "El 'parametro' debe ser 'uno' o 'todos'";
         }
-    }
-    else
-    {
-        echo json_encode(array("ERROR" => "Faltan datos necesarios para el listado de los productos. Se requiere parametro para listar uno o todos"));
+        return $arrayRespuesta;
     }
 }
 ?>

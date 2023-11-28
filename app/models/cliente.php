@@ -10,7 +10,7 @@ class Cliente
 
     public function mostrarDatos()
     {
-        return json_encode(array("ID" => $this->id, "NOMBRE" => $this->nombre, "USUARIO" => $this->usuario, "CLAVE" => $this->clave, "ESTADO" => $this->estado));
+        return array("id" => $this->id, "nombre" => $this->nombre, "usuario" => $this->usuario, "clave" => $this->clave, "estado" => $this->estado);
     }
 
     public static function ValidarDatos($nombre, $usuario, $clave)
@@ -62,24 +62,22 @@ class Cliente
     public static function TraerUnClientePorUsuario($usuario)
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select id,usuario,nombre,clave,estado from clientes where usuario = :usuario and estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select id,usuario,nombre,clave,estado from clientes where usuario = :usuario");
         $consulta->bindValue(':usuario', $usuario, PDO::PARAM_STR);
         $consulta->execute();   
         $clienteBuscado = $consulta->fetchObject('cliente');
         return $clienteBuscado;
     }
 
-    public static function TraerUnClientePorUsuarioClave($usuario, $clave)
+    public static function TraerClavePorUsuario($usuario)
     {
         $objetoAccesoDato = AccesoDatos::dameUnObjetoAcceso();
-        $consulta = $objetoAccesoDato->RetornarConsulta("select id,usuario,nombre,clave,estado from clientes where usuario = :usuario and clave = :clave and estado != 'borrado'");
+        $consulta = $objetoAccesoDato->RetornarConsulta("select clave from clientes where usuario = :usuario and estado != 'borrado'");
         $consulta->bindValue(':usuario', $usuario, PDO::PARAM_STR);
-        $consulta->bindValue(':clave', $clave, PDO::PARAM_STR);
-        $consulta->execute();   
-        $clienteBuscado = $consulta->fetchObject('cliente');
-        return $clienteBuscado;
+        $consulta->execute();
+        $claveBuscada = $consulta->fetch(PDO::FETCH_COLUMN);
+        return $claveBuscada;
     }
-
 
     public function ModificarClienteParametros()
     {

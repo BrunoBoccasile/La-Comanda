@@ -10,7 +10,7 @@ class Producto
 
     public function mostrarDatos()
     {
-        return json_encode(array("ID" => $this->id, "NOMBRE" => $this->nombre, "TIPO" => $this->tipo, "PRECIO" => $this->estado));
+        return array("id" => $this->id, "nombre" => $this->nombre, "tipo" => $this->tipo, "precio" => $this->estado);
     }
 
     public static function ValidarDatos($nombre, $tipo, $precio)

@@ -23,7 +23,14 @@ class TraerDataJWTMiddleware
         {
             $existingData = $request->getParsedBody();
             $newData = array('datos' => AutentificadorJWT::ObtenerData($token));
-            $payload = json_encode(array_merge($existingData, $newData));
+            if($existingData == null)
+            {
+                $payload = json_encode($newData);
+            }
+            else
+            {
+                $payload = json_encode(array_merge($existingData, $newData));
+            }
             $request = $request->withParsedBody(json_decode($payload, true));
             $response = $handler->handle($request);
         } 

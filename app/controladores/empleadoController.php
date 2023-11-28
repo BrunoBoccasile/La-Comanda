@@ -18,6 +18,8 @@ class EmpleadoController {
             $empleado->clave = $clave;
             $empleado->estado = $estado;
             $empleado->tipo = $tipo;
+            $empleado->fechaAlta = date("y-m-d");
+            $empleado->fechaBaja = "";
             return $empleado->InsertarElEmpleadoParametros();
         }
     }
@@ -37,6 +39,7 @@ class EmpleadoController {
     public function bajaEmpleado($id) {
         $empleado = Empleado::TraerUnEmpleado($id);
         $empleado->estado = "borrado";
+        $empleado->fechaBaja = date("y-m-d");
         return $empleado->ModificarEmpleadoParametros();
     }
     
@@ -65,10 +68,9 @@ class EmpleadoController {
         return $retorno;
     }
 
-    public function obtenerTipoDeEmpleadoLogeado($usuario, $clave)
+    public function obtenerClavePorUsuario($usuario)
     {
-        $empleado = Empleado::TraerUnEmpleadoPorUsuarioClave($usuario, $clave);
-        return $empleado->tipo;
+        return Empleado::TraerClavePorUsuario($usuario);
     }
 
     public function buscarEmpleadoPorId($id) {
